@@ -1333,6 +1333,19 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonRu
   function scheduleRestart(): void {
     const timer = setTimeout(() => {
       logger.write("info", "main", "restart_requested");
+      // macOS 26 launchd can leave a KeepAlive job "pending spawn" indefinitely
+      // after a non-zero exit, so schedule an explicit detached kickstart that
+      // fires after this process has exited.
+      try {
+        const uid = process.getuid?.() ?? 501;
+        Bun.spawn(["/bin/sh", "-c", `sleep 3; /bin/launchctl kickstart gui/${uid}/co.openinstinct.daemon`], {
+          stdout: "ignore",
+          stderr: "ignore",
+          stdin: "ignore",
+        }).unref();
+      } catch (error) {
+        logger.write("warn", "main", "restart_kickstart_schedule_failed", { message: messageOf(error) });
+      }
       const hard = setTimeout(() => exit(75), 8_000);
       hard.unref?.();
       void shutdown({ exitCode: 75, reason: "restart_requested" }).finally(() => clearTimeout(hard));
