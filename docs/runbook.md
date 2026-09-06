@@ -67,8 +67,8 @@ the supported installation path.
    `KEY=value` lines and `chmod 600` it; the daemon loads that file at startup
    (refusing it if group/world readable) and logs `env_file_loaded` with the key
    names only. Which keys are needed follows the `apiKeyEnv` of the provider
-   behind `mainSessionModel` in `~/.gjc/agent/models.yml`. Panel **Settings → AI
-   account** can do the same.
+   behind `mainSessionModel` in `~/.openinstinct/omo/models.json`. Panel
+   **Settings → AI account** can do the same.
 
 1. Optional iMessage configuration. No config key is required for the core lane.
    To attach iMessage, write `~/.openinstinct/config.json` with one owner handle;
@@ -202,15 +202,15 @@ restart as well.
 ## Gajae's own Chrome profile
 
 The browser tool never touches the owner's personal Chrome. Every browser
-call is pinned (via the runtime prompt) to `app.browser = "chrome"` with
-`user_data_dir = ~/.openinstinct/chrome-profile`: a dedicated, persistent
-profile that launches with a CDP port (Chrome 136+ only allows that on a
-non-default data dir). Press "Open Gajae's browser" in the panel (or
-`browser.open` on the socket) to open that profile visibly, sign into the
-sites Gajae should use, and close the window — the logins persist across
-runs and are isolated from your own sessions, so token-rotating sites (Kakao,
-banks) no longer log you out. The prompt also pins one named tab ("main")
-for sequential work to keep Chrome's footprint small.
+call goes through the `browser` MCP server (`chrome-devtools-mcp`), attached to a
+daemon-owned Chrome running on `~/.openinstinct/chrome-profile` with
+`--remote-debugging-port=9223`. Chrome 136+ only allows a debugging port on a
+non-default data dir, so the profile is dedicated and persistent, and the pin
+lives in the MCP declaration rather than in a prompt. Press "Open Gajae's
+browser" in the panel (or `browser.open` on the socket) to open that profile in a
+visible window, sign into the sites Gajae should use, and close it. The logins
+persist across runs and stay isolated from your own sessions, so token-rotating
+sites (Kakao, banks) no longer log you out.
 
 ## Presence (typing indicator, read receipts)
 
@@ -227,29 +227,54 @@ implemented — that path is the fragile one.
 
 ## Persona (the Gajae soul)
 
-`daemon/src/persona/GAJAE_SOUL.md` is appended to the inherited gjc system
+`daemon/src/persona/GAJAE_SOUL.md` is appended to the engine's own system
 prompt for every main and child session. It is read from disk at session
 creation, so editing it (bump the `soul-version` comment) and then pressing
 "Refresh personality" in the panel — or sending `session.reload` on the
 control socket — rebuilds the session over the same transcript without a
 restart. The reply carries the live `soulVersion`.
 
-## First-run for someone new to gjc
+## First-run for someone new to omo
 
-The release archive needs no prior gjc setup — it carries the `gjc` binary
-pinned to the vendored SDK. After install, the panel's Settings → AI
-account tab drives `gjc auth-broker login <provider>` (Claude or ChatGPT OAuth,
-with a paste-the-code fallback when the browser callback cannot reach the
-Mac) or stores an API key in `~/.openinstinct/env`. The first successful
-sign-in picks a public default main model for that provider; the model
-picker lists everything `gjc --list-models` can reach. Until an account works,
-the daemon reports "Gajae has no AI account yet" and the panel offers Settings.
+No prior setup is needed. The engine ships in the release as an ordinary npm
+dependency and keeps its state in `~/.openinstinct/omo`. After install, the
+panel's Settings → AI account tab runs the engine's OAuth login for a provider
+(Anthropic, ChatGPT/Codex, Copilot, OpenRouter and the rest), with a
+paste-the-code fallback when the browser callback cannot reach the Mac, or stores
+an API key in `~/.openinstinct/env`. The first successful sign-in picks a public
+default main model for that provider; the model picker lists everything the
+engine can reach. Until an account works, the daemon reports "Gajae has no AI
+account yet" and the panel offers Settings.
 
-If a prior `gjc` or Codex CLI sign-in is already present, **Settings → AI account**
-can call `accounts.discover` and list credentials available to this daemon.
-Choose **Adopt** to use one; adoption is an explicit owner action and never
-happens automatically because it may start billing an existing subscription.
-The equivalent control verbs are `accounts.discover` and `accounts.adopt`.
+If an omo, Codex CLI, or Claude Code sign-in is already on this Mac,
+**Settings → AI account** can call `accounts.discover` and list what the daemon
+could use. Choose **Adopt** to copy one into `~/.openinstinct/omo/auth.json`;
+adoption is an explicit owner action and never happens automatically because it
+may start billing an existing subscription. The equivalent control verbs are
+`accounts.discover` and `accounts.adopt`.
+
+### Engine state and where it lives
+
+Everything the omo engine needs is under `~/.openinstinct/omo`, owned by the
+daemon:
+
+- `auth.json` — credentials (0600). Written by the panel's account tab (engine
+  OAuth or a pasted key), by **Adopt**, or seeded once by
+  `scripts/install-omo-state.sh` from the host's `~/.omo/agent` on first install.
+- `models.json` — providers and models the engine can reach, including custom
+  providers added from **Settings → AI account**.
+- `settings.json` — the engine settings the daemon depends on (steering `all`,
+  engine auto-compaction off, quiet startup, `openai.serviceTier` for fast mode).
+- `sessions/` — the main-session transcripts (`.jsonl`); children keep theirs
+  under `~/.openinstinct/children`.
+
+The daemon pins `SENPI_CODING_AGENT_DIR`, `OMO_CODING_AGENT_DIR` and
+`PI_CODING_AGENT_DIR` to that directory (in the launchd plist and again in
+`env-bootstrap.ts`), so an `omo` or `senpi` install on the same Mac never shares
+state with it. To start over, stop the daemon and delete `~/.openinstinct/omo`;
+the next boot reseeds `settings.json`, `models.json` and an empty `auth.json`.
+The daemon-owned Chrome answers CDP on port 9223; if that port is taken by
+another Chrome on the same profile, quit it once and the daemon relaunches its own.
 
 ## Check-in (heartbeat)
 

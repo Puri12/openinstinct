@@ -1,18 +1,19 @@
 # OpenInstinct 아키텍처
 
-macOS launchd 데몬 하나(`openinstinctd`, `daemon/src/main.ts`를 도는 Bun 런타임), 메뉴바 앱 하나, 작은 손쉬운 사용 헬퍼 하나. 모든 상태는 `~/.openinstinct` 아래. root 없음, SIP 켬, `gjc` 외 서드파티 바이너리 없음.
+macOS launchd 데몬 하나(`openinstinctd`, `daemon/src/main.ts`를 도는 Bun 런타임), 메뉴바 앱 하나, 작은 손쉬운 사용 헬퍼 하나. 모든 상태는 `~/.openinstinct` 아래. root 없음, SIP 켬, 서드파티 바이너리 없음. omo 엔진은 `daemon/package.json`의 평범한 의존성(`@code-yeongyu/senpi`, `typebox`, `chrome-devtools-mcp`)이라 따로 받아오는 외부 실행 파일이 없습니다.
 
 ```
 ~/.openinstinct/
   bin/openinstinctd      bun 런타임 복사본 (재설치해도 TCC 아이덴티티 유지)
   bin/oi-presence        입력 중 / 읽음 헬퍼 (Swift, AX)
-  bin/bun → openinstinctd  벤더링된 gjc shim(#!/usr/bin/env bun)이 찾도록
-  lib/                   데몬 소스 + node_modules (install.sh가 복사)
+  bin/bun → openinstinctd  데몬의 bun 런타임을 "bun"으로 노출해 그걸 실행하는 도구가 찾도록
+  lib/                   데몬 소스 + node_modules (install.sh가 복사, omo 엔진 포함)
   config.json            선택적 소유자 handle, 이름, 모델, 제한
 
-  env                    프로바이더 키 (0600), SDK import 전에 로드
+  env                    프로바이더 키 (0600), 엔진 import 전에 로드
+  omo/                   엔진 상태: auth.json, models.json, settings.json, sessions/
   state.db               SQLite: 커서, 전송, 자식, 모니터, 영수증
-  session/               메인 SDK 세션의 cwd (절대 레포 아님)
+  session/               메인 세션의 cwd (절대 레포 아님)
   children/{work,sessions,journal}/
   memory/                git 저장소, gajae-way 구조
   chrome-profile/        에이전트 전용 Chrome user-data-dir
@@ -23,7 +24,7 @@ macOS launchd 데몬 하나(`openinstinctd`, `daemon/src/main.ts`를 도는 Bun 
 
 ## 부팅과 레인
 
-`env-bootstrap.ts`가 첫 import: `@gajae-code/coding-agent`가 평가되기 *전에* `~/.openinstinct/env`를 `process.env`에 넣습니다. SDK가 모듈 로드 시점에 자동 임포트한 자격 증명을 주입하는데, 소유자 파일이 이겨야 하기 때문입니다. 그 다음 `startDaemon()`:
+`env-bootstrap.ts`가 첫 import: 엔진 모듈이 평가되기 *전에* `~/.openinstinct/env`를 `process.env`에 넣습니다. 엔진이 모듈 로드 시점에 자동 임포트한 자격 증명을 주입하는데, 소유자 파일이 이겨야 하기 때문입니다. 같은 모듈이 엔진 상태 디렉터리를 `~/.openinstinct/omo`로 고정하고(`SENPI_CODING_AGENT_DIR`, `OMO_CODING_AGENT_DIR`, `PI_CODING_AGENT_DIR`, launchd plist에도 같은 값) 필요하면 `settings.json`을 시드합니다(스티어링 전체, 자동 컴팩션 꺼짐). 호스트의 `~/.omo/agent`는 건드리지 않으며, `scripts/install-omo-state.sh`가 첫 설치 때 한 번만 `auth.json`과 `models.json`을 복사하고 기존 파일을 덮어쓰지 않습니다. 그 다음 `startDaemon()`:
 
 1. **부트스트랩 머신**이 `config`와 AI 자격 증명을 프로브합니다. 코어 레인을 막는 것은 자격 증명뿐입니다. `config.json`이 없거나 형식이 잘못되어도 시작을 막지 않습니다. `core-config.ts`가 범위별 제품 기본값을 적용하고 폴백을 로그로 남깁니다. 소유자 handle이 설정된 경우에만 전체 디스크 접근 권한(`chat.db`)과 자동화(Messages에 `osascript` 질의)를 추가로 프로브하며, 채팅만 쓰는 설치에서는 이 프로브를 건너뜁니다. 5초마다 재프로브하고 상태를 소켓에 공개합니다.
 
@@ -35,7 +36,7 @@ macOS launchd 데몬 하나(`openinstinctd`, `daemon/src/main.ts`를 도는 Bun 
 
 코어 레인과 iMessage 레인은 수명이 분리되어 있습니다:
 
-- **코어 레인**은 공유 SDK 세션, 자식, 모니터, 메모리, 채팅 화면을 소유합니다. AI 자격 증명만 문턱으로 삼으며 iMessage 설정 없이도 실행됩니다.
+- **코어 레인**은 공유 엔진 세션, 자식, 모니터, 메모리, 채팅 화면을 소유합니다. AI 자격 증명만 문턱으로 삼으며 iMessage 설정 없이도 실행됩니다.
 - **선택적 iMessage 레인**은 chat.db 워처, 전송 서비스, Messages 발신기, presence 경로를 소유합니다. 코어가 실행 중이고 소유자 handle이 설정되어 있으며 전체 디스크 접근 권한 프로브가 통과할 때 붙습니다. 자동화는 handle이 설정된 경우에만 프로브하고 `status.get`에 표시합니다. Messages 전송에는 자동화가, 입력 중/읽음 표시에는 손쉬운 사용 권한이 필요합니다. handle 없음, FDA 거부/프로브 오류, attach 실패, 코어 중단, 데몬 종료 때 레인이 분리됩니다.
 
 레인 수렴은 부팅 시, 5초 재프로브마다(예: 권한 부여 직후), 소유자 handle이나 자격 증명 설정 변경 직후에 실행됩니다. attach, detach, handle 교체에 데몬 재시작은 필요하지 않습니다. handle을 바꾸거나 지울 때는 항상 이전 handle을 먼저 폐기합니다. 레인을 분리하고 세션을 리로드한 뒤, 새 레인을 붙이기 전에 이전 handle의 pending/in-flight 원장 행을 만료시킵니다. 같은 handle의 권한 분리에서는 이 행을 다음 attach 때 재생하도록 보존하며, 분리된 상태에서 시작한 턴은 전체 수명 동안 채팅 전용으로 남습니다.
@@ -51,7 +52,7 @@ macOS launchd 데몬 하나(`openinstinctd`, `daemon/src/main.ts`를 도는 Bun 
 - `deliveries_expired_for_handle`: 이전 소유자 handle과 함께 폐기한 pending/in-flight 원장 행.
 - `config_missing_defaults_applied`, `config_invalid_defaults_applied`: 코어를 유지한 채 설정 기본값으로 폴백한 기록.
 - `session_reloaded`: 세션 리로드 기록(레인/페르소나 변경 포함).
-- `router_initial_user_skipped`: queued steering을 분류할 때 SDK router가 해당 run의 최초 user 메시지를 건너뛴 기록.
+- `router_initial_user_skipped`: queued steering을 분류할 때 엔진 router가 해당 run의 최초 user 메시지를 건너뛴 기록.
 
 ## 수신: iMessage와 Chat → 공유 소유자 턴
 
@@ -63,18 +64,19 @@ iMessage 어댑터는 계속 `imessage/reader.ts`로 `chat.db`(읽기 전용, WA
 
 ## 메인 세션
 
-`sdk-session/main-session.ts`가 SDK `createAgentSession` 하나를 감쌈. 데몬 시작마다 같은 트랜스크립트 파일 위에서 다시 엽니다(`SessionManager`). 메시지마다 재생성되는 일은 없음.
+`omo-session/main-session.ts`가 omo 엔진 세션 하나를 감쌈. 세션은 `omo-session/omo-runtime.ts`의 `createOmoServices` → `resolveModel` → `openOmoSession` 경로로 만들어집니다. 데몬 시작마다 같은 트랜스크립트 파일 위에서 다시 엽니다(`SessionManager`). 메시지마다 재생성되는 일은 없음.
 
 - **직렬 큐**: 턴, 리로드, 컴팩션이 한 번에 하나.
-- **스티어링**: `interruptMode=wait`, `steeringMode=all` — 진행 중 툴 호출은 끝내고, 쌓인 소유자 문자는 한꺼번에 들어감.
+- **스티어링**: `steeringMode=all` — omo 엔진의 `steer()`는 진행 중인 툴 호출이 끝나길 기다렸다가 끼어들므로 따로 인터럽트 설정이 없습니다. 쌓인 소유자 문자는 한꺼번에 들어감.
 - **세그먼트**: 어시스턴트 텍스트를 툴 호출 직전과 assistant `message_end`마다 소유자에게 flush. 생각–행동–생각 턴이 마지막에 벽 하나 대신 짧은 문자 여러 개로. 소유자 턴만 스트리밍하고 내부 턴(영수증 후속, 모니터 진단)은 조용함.
 - **이미지 포워딩**: 에이전트가 이미지 경로를 `read`하면 그 파일을 소유자에게 첨부로 admit.
-- **워치독**: 무활동 기반(기본 300초 동안 SDK 이벤트 *없음*), 스트리밍/툴 호출/스티어가 리셋. 타임아웃 시 abort 또는 dispose + 같은 트랜스크립트 위에 재생성.
-- **컴팩션**: SDK 자동 컴팩션 끔; 턴이 끝난 뒤 컨텍스트 ≥ 50 %면 데몬이 컴팩션.
+- **워치독**: 무활동 기반(기본 300초 동안 엔진 이벤트 *없음*), 스트리밍/툴 호출/스티어가 리셋. 타임아웃 시 abort 또는 dispose + 같은 트랜스크립트 위에 재생성.
+- **컴팩션**: 엔진 자동 컴팩션 끔; 턴이 끝난 뒤 컨텍스트 ≥ 50 %면 데몬이 컴팩션.
 - **리로드**(`session.reload`): 같은 트랜스크립트 위에 dispose + 재생성 → 바뀐 시스템 프롬프트가 히스토리 손실 없이 적용.
-- **시스템 프롬프트** = gjc 기본값 그대로 → `persona/GAJAE_SOUL.md`(캐릭터, 버전 관리) → `persona/RUNTIME.md`(환경: iMessage, 플레인 텍스트, 위임 규칙, 모니터 규칙, Chrome 프로파일; `{{ownerHandle}}` 등은 config에서 치환).
-- **커스텀 툴**: `delegate_background`, `send_image`, `monitor_author`, `memory_search`, `memory_capture`, `memory_audit`.
-- **익스텐션**: `browser/enforce.ts`가 전용 Chrome 프로파일에 고정되지 않은 `browser` 툴 호출을 차단하고, 다시 시도할 정확한 `app` 블록을 돌려줌.
+- **시스템 프롬프트** = 엔진 기본값 그대로(엔진의 `appendSystemPrompt`로 뒤에 붙임) → `persona/GAJAE_SOUL.md`(캐릭터, 버전 관리) → `persona/RUNTIME.md`(환경: iMessage, 플레인 텍스트, 위임 규칙, 모니터 규칙, Chrome 프로파일; `{{ownerHandle}}` 등은 config에서 치환).
+- **커스텀 툴**: 엔진의 `ToolDefinition`을 `omo-session/tool-types.ts`(typebox 스키마)로 감싸서 등록 — `delegate_background`, `send_image`, `monitor_author`, `memory_search`, `memory_capture`, `memory_audit`, `report_progress`, `child_status`/`child_nudge`.
+- **MCP 브라우저**: `browser/chrome.ts`가 데몬 소유 Chrome을 프로파일 `~/.openinstinct/chrome-profile`과 `--remote-debugging-port=9223`으로 띄우거나 재사용하고(`ensureChrome`가 먼저 `http://127.0.0.1:9223/json/version`을 프로브), `browser/enforce.ts`가 `chrome-devtools-mcp`를 그 CDP URL에 붙인 MCP 서버 `browser`로 등록합니다. 모델은 `mcp_browser_navigate_page`, `mcp_browser_take_snapshot`, `mcp_browser_take_screenshot`, `mcp_browser_click`, `mcp_browser_fill`, `mcp_browser_evaluate_script`, `mcp_browser_wait_for`, `mcp_browser_list_pages`/`new_page`/`select_page`/`close_page` 등 19개를 `includeTools`로 받습니다. 프로파일 고정은 프롬프트가 아니라 MCP 선언에 들어 있습니다.
+- **강제 규칙**: 같은 enforcer가 `task`/`subagent`/`job`/`eval`/`workflow`/`team_create`/`schedule_wakeup` 호출을 막고, 턴당 툴 예산(메인 6, 자식 40), 금지 경로(`~/.openinstinct/{children,logs,omo,state.db,env,secrets}`, 다른 에이전트의 홈, 세션 `.jsonl`), Discord 봇 토큰 규칙, 메인 세션 bash 규칙(timeout 20초 이하 또는 `run_in_background: true`)을 그대로 유지합니다.
 
 ## 발신: ChatHub, 소유자 outbox → iMessage
 
@@ -96,15 +98,23 @@ live-child 캡(기본 16) 아래에서 admit한다. live 캡은 종료되지 않
 내보낼 자식이 없으면 admission을 거부한다.
 
 `delegate_background` 자식(`kind: task_tool`)은 대화형이다. 외부에 보이는 내구성
-수명은 `running → idle → cold → terminated`다. `idle` 동안에는 warm TTL까지 SDK
+수명은 `running → idle → cold → terminated`다. `idle` 동안에는 warm TTL까지 엔진
 세션 객체를 유지하고, 이후에는 객체만 dispose하되 session-file 트랜스크립트는
 보존한다. `cold` 넛지는 그 트랜스크립트를 다시 열고, idle timeout은 자식을
 종료한다. 메인 세션의 `child_status`는 미리 계산한 메모리 상태 스냅샷만 읽고
 `child_nudge`는 메모리 lifecycle 큐만 바꾼 뒤 pump을 예약한다. 두 툴은 호출 시
-SQLite나 자식 SDK 세션에 들어가지 않는다. latency alert threshold는 탐지 telemetry이며
+SQLite나 자식 엔진 세션에 들어가지 않는다. latency alert threshold는 탐지 telemetry이며
 선점 보장이 아니다. 대화형 자식만 `report_progress`를 받으며, 업데이트는 내구적으로
 저장되고 UTF-8 경계로 잘리며, 기본 3초 배치와 자식별 레이트 리밋을 거쳐 owner turn
 steer 또는 메인 내부 turn으로 주입된다.
+
+자식 세션은 `children/runners/omo-inprocess.ts`(`OmoChildSessionFactory`)가 메인과
+같은 헬퍼로 인프로세스에서 열며, 자식별 세션 디렉터리는 `~/.openinstinct/children`
+아래에 둔다. `children/runners/omo-external.ts`는 명시적 어댑터이며 프로덕션 기본값이
+아니다. 이 어댑터는 벤더링된 엔진 CLI(`daemon/node_modules/@code-yeongyu/senpi/dist/cli.js`,
+설치 레이아웃에서는 `dataPaths().omoCli`)를 `-p --mode json --no-extensions --no-skills
+--no-prompt-templates --no-themes --no-context-files --session-dir <dir> --model <m>`으로
+띄운다.
 
 모든 자식 kind의 실패와 재시작 orphan은 interim 배치를 건너뛰고 내구성 receipt가
 된다. 모든 receipt는 영속 MainSession의 내부 triage turn으로 먼저 간다. MainSession이
@@ -128,9 +138,11 @@ stack, 경로와 receipt projection은 내부 근거로만 남으며 소유자�
 
 ## 제어 프로토콜
 
-`control/schema.ts`가 NDJSON 프레임(hello/negotiate, request, response, error, event)과 verb 목록을 정의합니다. `daemon/test/fixtures/control/`의 픽스처가 골든 소스이며 `scripts/sync-control-fixtures.sh`가 Swift 테스트 타깃으로 복사해서 패널 코덱을 바이트 단위로 검증합니다. 주요 verb: `status.get`(부트스트랩, 세션, 자식, 모니터, `attention`), `monitors.*` 및 `monitors.run`, `daemon.pause/resume/restart`, `session.compact/reload`, `settings.get/set`, `models.list`, `accounts.*`(`gjc auth-broker login`을 통한 OAuth, 코드 붙여넣기 폴백), `providers.custom`(`~/.gjc/agent/models.yml`에 프로바이더 블록 기록), `browser.open`, `memory.backfillCaptures`.
+`control/schema.ts`가 NDJSON 프레임(hello/negotiate, request, response, error, event)과 verb 목록을 정의합니다. `daemon/test/fixtures/control/`의 픽스처가 골든 소스이며 `scripts/sync-control-fixtures.sh`가 Swift 테스트 타깃으로 복사해서 패널 코덱을 바이트 단위로 검증합니다. 주요 verb: `status.get`(부트스트랩, 세션, 자식, 모니터, `attention`), `monitors.*` 및 `monitors.run`, `daemon.pause/resume/restart`, `session.compact/reload`, `settings.get/set`, `models.list`, `accounts.*`(엔진 OAuth 흐름으로 로그인, 브라우저 콜백이 막힐 때는 `accounts.login.finish` 코드 붙여넣기 폴백), `providers.custom`(`~/.openinstinct/omo/models.json`에 프로바이더 블록 기록), `browser.open`, `memory.backfillCaptures`.
 
-`accounts.discover`는 기존 Claude 및 ChatGPT/Codex CLI 자격 증명을 찾아 채택 가능한 계정으로 나열합니다. `accounts.adopt`는 소유자가 **Adopt**를 누른 뒤에만 데몬이 선택한 자격 증명을 바꾸며, 기존 구독으로 과금이 시작될 수 있으므로 자동 채택하지 않습니다. `monitors.run`은 모니터 일정이나 enabled 상태를 바꾸지 않고 즉시 한 번 실행합니다.
+`settings/service.ts`는 엔진 위에서 프로세스 안으로 동작합니다. `models.list`는 엔진 모델 런타임에서(`provider/model` 형식 id), `accounts.list`는 저장된 자격 증명에서 옵니다. `accounts.providers`는 엔진의 OAuth 프로바이더 목록(anthropic, openai-codex, github-copilot, openrouter, kimi-coding, xai, cursor, claude-sdk-oauth, cursor-cli-oauth, radius)이고, `accounts.login`은 엔진 OAuth 흐름을 돌려 URL을 패널에 넘긴 뒤 `accounts.login.finish`로 코드 붙여넣기를 받으며, `accounts.logout`은 해당 자격 증명을 지웁니다. 커스텀 프로바이더(`openai-completions` / `openai-responses` / `anthropic-messages`)는 `~/.openinstinct/omo/models.json`에 기록하고, fast mode는 `~/.openinstinct/omo/settings.json`의 `openai.serviceTier = "priority"`입니다.
+
+`accounts.discover`는 `~/.omo/agent/auth.json`, `~/.codex/auth.json`, `~/.claude/.credentials.json`에서 기존 자격 증명을 찾아 채택 가능한 계정으로 나열하고(`settings/credential-adopt.ts`), 소유자가 **Adopt**를 누른 뒤에만 하나를 `~/.openinstinct/omo/auth.json`으로 복사합니다. `accounts.adopt`는 소유자가 **Adopt**를 누른 뒤에만 데몬이 선택한 자격 증명을 바꾸며, 기존 구독으로 과금이 시작될 수 있으므로 자동 채택하지 않습니다. `monitors.run`은 모니터 일정이나 enabled 상태를 바꾸지 않고 즉시 한 번 실행합니다.
 
 Chat 화면은 `chat.send` (`{text}`), `chat.history` (`{limit}`), `chat.subscribe` (`{}`)를 사용합니다. 구독은 opt-in인 `chat.message`와 `chat.presence` 이벤트 토픽을 받습니다. 모든 Chat 이벤트 payload에는 숫자형 단조 증가 `seq`가 있고, 턴의 최종 어시스턴트 `chat.message`에는 `final: true`가 붙습니다. `chat.history` 응답은 `{messages, seq, tail, inFlight?, truncated?, tailTruncated?}`이며 `tail`에는 메시지 이벤트만 들어가므로 클라이언트가 히스토리와 실시간 이벤트를 손실·중복 없이 합칠 수 있습니다.
 
@@ -146,9 +158,9 @@ Account 탭도 OAuth/API 키 계정을 나열하고, 기존 CLI 자격 증명에
 
 ## 설치와 패키징
 
-`scripts/install.sh`가 레포를 `~/.openinstinct/lib`에 복사, 프로덕션 의존성 설치, bun이 바뀌지 않았으면 데몬 바이너리 inode 유지(TCC 권한 유지), `~/.local/bin`이 포함된 PATH로 launchd plist 렌더링, 패널과 presence 헬퍼 설치/실행.
+`scripts/install.sh`가 레포를 `~/.openinstinct/lib`에 복사, 프로덕션 의존성 설치, bun이 바뀌지 않았으면 데몬 바이너리 inode 유지(TCC 권한 유지), `~/.local/bin`이 포함된 PATH와 엔진 상태 디렉터리 변수로 launchd plist 렌더링, 패널과 presence 헬퍼 설치/실행. 마지막에 `scripts/install-omo-state.sh`를 돌려 첫 설치일 때만 `~/.omo/agent`의 `auth.json`/`models.json`을 `~/.openinstinct/omo`로 복사합니다.
 
-`scripts/build-release.sh`가 패널과 presence 헬퍼를 컴파일하고, 그 페이로드에 bun 런타임과 벤더링된 SDK 버전에 고정된 `gjc` 바이너리를 담아 `dist/openinstinct-<version>-darwin-<arch>.tar.gz`와 `.sha256`을 만듦.
+`scripts/build-release.sh`가 패널과 presence 헬퍼를 컴파일하고, 그 페이로드에 bun 런타임과 저장소를 담아(별도 바이너리 자산 없음) `dist/openinstinct-<version>-darwin-<arch>.tar.gz`와 `.sha256`을 만듦.
 
 `scripts/install-remote.sh`가 curl 진입점: 릴리스 자산을 찾아 체크섬을 검증하고 아카이브를 풀어 그 디렉터리를 `bootstrap-from-payload.sh`에 넘기며, 그것이 소스를 `~/.openinstinct/src`에 스테이징한 뒤 `install.sh`를 호출. 설치 앱도 공증 단계도 없음 — Gatekeeper는 `com.apple.quarantine`이 붙은 파일만 검사하고 그 속성은 브라우저가 붙이지 curl은 붙이지 않으므로, 서명 없는 빌드도 승인 프롬프트 없이 설치·실행됨.
 

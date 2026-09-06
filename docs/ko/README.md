@@ -5,9 +5,9 @@
   <a href="https://github.com/Yeachan-Heo/openinstinct/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Yeachan-Heo/openinstinct?style=flat-square"></a>
 </p>
 
-내 Mac에 상주하면서 메뉴바 Chat 창으로 대화하는 개인 에이전트. iMessage는 선택 사항이며, 폰 문자도 쓰고 싶을 때 연결합니다. 가재는 읽고, 브라우저를 돌리고, 기억하고, 백그라운드 작업과 정기 감시를 실행하며, iMessage 레인이 연결되면 문자로도 답합니다. 캐릭터는 [gajae-code](https://github.com/Yeachan-Heo/gajae-code)의 **가재(Gajae)** — 터미널 세션 대신 항상 켜져 있는 데몬으로 돕니다.
+내 Mac에 상주하면서 메뉴바 Chat 창으로 대화하는 개인 에이전트. iMessage는 선택 사항이며, 폰 문자도 쓰고 싶을 때 연결합니다. 가재는 읽고, 브라우저를 돌리고, 기억하고, 백그라운드 작업과 정기 감시를 실행하며, iMessage 레인이 연결되면 문자로도 답합니다. 캐릭터는 **가재(Gajae)** — [omo](https://github.com/code-yeongyu/oh-my-openagent) 엔진(`omo` 코딩 에이전트와 같은 엔진) 위에서 터미널 세션 대신 항상 켜져 있는 데몬으로 돕습니다.
 
-아카이브 하나로 자기완결(bun 런타임과 `gjc` 포함), SIP는 켠 채로.
+아카이브 하나로 자기완결. bun 런타임과 omo 엔진(npm 패키지 `@code-yeongyu/senpi`)이 `node_modules` 안에 함께 들어 있어 따로 받아야 하는 바이너리가 없고, SIP는 켠 채로 둡니다.
 
 ```
 나 (Chat 창) ──제어 소켓──▶ openinstinctd
@@ -16,7 +16,7 @@
                               │                                      │
                               └──AppleScript 전송── Messages.app ◀────┘
                                                                    │
-                                       영구 gjc SDK 세션 하나
+                                       영구 omo 엔진 세션 하나
                                        ├─ 브라우저 (전용 Chrome 프로파일)
                                        ├─ 메모리 (git 저장소, BM25 검색)
                                        ├─ 백그라운드 자식 세션
@@ -80,18 +80,18 @@ bash scripts/drills/failure-drills.sh
 |---|---|
 | `daemon/src/main.ts` | 데몬 조립: 부트스트랩, 수신 루프, 레인 |
 | `daemon/src/imessage/` | chat.db 리더(커서, attributedBody), AppleScript 발신 |
-| `daemon/src/sdk-session/` | 영구 메인 세션: 스티어, 워치독, 세그먼트, 리로드 |
-| `daemon/src/children/` | 백그라운드 자식(인프로세스 SDK 또는 외부 `gjc`) |
+| `daemon/src/omo-session/` | 영구 메인 세션: 스티어, 워치독, 세그먼트, 리로드 |
+| `daemon/src/children/` | 백그라운드 자식(인프로세스 엔진 세션 또는 외부 어댑터 `omo-external.ts`) |
 | `daemon/src/monitors/` | 모니터 저장소, cron 스케줄러, 트리거, 전파/진단 |
 | `daemon/src/memory/` | gajae-way 메모리 벤더링(`vendor/`) + 어댑터 + 툴 |
 | `daemon/src/persona/` | `GAJAE_SOUL.md`(캐릭터), `RUNTIME.md`(환경) |
 | `daemon/src/browser/` | 전용 Chrome 프로파일 강제 |
 | `daemon/src/control/` | 패널용 NDJSON 유닉스 소켓 프로토콜 |
-| `daemon/src/settings/` | 소유자 설정, gjc auth-broker 연동 |
+| `daemon/src/settings/` | 소유자 설정, omo 엔진 계정/모델 관리를 프로세스 안에서 처리 |
 | `panel/` | SwiftUI 메뉴바 앱 (`NSStatusItem` + popover + 별도 Chat 창 + Settings 창) |
 | `presence/` | `oi-presence`: 손쉬운 사용으로 입력 중/읽음 표시 |
 | `scripts/` | 설치, 릴리스 아카이브, 인수 테스트, soak, 장애 드릴 |
-| `docs/` | [사용자 가이드](user-guide.md), [아키텍처](architecture.md), [운영 가이드](runbook.md) |
+| `docs/` | [사용자 가이드](user-guide.md), [아키텍처](architecture.md), [운영 가이드](runbook.md), [omo 엔진](omo-engine.md) |
 
 ## 안 하는 것
 

@@ -36,7 +36,7 @@ ID로 로그인해 둡니다(Messages → 설정 → iMessage → 로그아웃 �
 
 ### 개발자 설치 경로
 
-0. 프로바이더 자격 증명. AI 계정 또는 관리되는 API 키가 준비되면 코어 레인이 시작됩니다. 데몬은 로그인 셸 없이 launchd 아래에서 돌기 때문에 `.zshrc`의 API 키가 닿지 않습니다. `~/.openinstinct/env`에 `KEY=value` 줄로 넣고 `chmod 600` 하세요. 데몬이 시작 시 로드하고(그룹/전체 읽기 가능하면 거부) `env_file_loaded`에 키 이름만 기록합니다. 필요한 키는 `~/.gjc/agent/models.yml`에서 `mainSessionModel`의 프로바이더 `apiKeyEnv`를 따릅니다. 패널 **Settings → AI account**에서도 같은 작업을 할 수 있으며, **Accounts** 탭은 기존 Claude 및 ChatGPT/Codex CLI 자격 증명을 발견하고 소유자가 **Adopt**를 누른 경우에만 채택합니다. 기존 구독으로 과금이 시작될 수 있으므로 자동 채택하지 않습니다.
+0. 프로바이더 자격 증명. AI 계정 또는 관리되는 API 키가 준비되면 코어 레인이 시작됩니다. 데몬은 로그인 셸 없이 launchd 아래에서 돌기 때문에 `.zshrc`의 API 키가 닿지 않습니다. `~/.openinstinct/env`에 `KEY=value` 줄로 넣고 `chmod 600` 하세요. 데몬이 시작 시 로드하고(그룹/전체 읽기 가능하면 거부) `env_file_loaded`에 키 이름만 기록합니다. 필요한 키는 `~/.openinstinct/omo/models.json`에서 `mainSessionModel`이 가리키는 프로바이더의 `apiKeyEnv`를 따릅니다. 패널 **Settings → AI account**에서 엔진 OAuth로 로그인하거나 키를 저장하면 같은 결과가 되고, **Accounts** 탭은 기존 omo(`~/.omo/agent/auth.json`), Codex CLI(`~/.codex/auth.json`), Claude Code(`~/.claude/.credentials.json`) 로그인을 발견해 소유자가 **Adopt**를 누른 경우에만 `~/.openinstinct/omo/auth.json`으로 채택합니다. 기존 구독으로 과금이 시작될 수 있으므로 자동 채택하지 않습니다.
 
 1. 선택적 iMessage 설정. 코어 레인에는 필수 설정 키가 없습니다. iMessage를 붙이려면 `~/.openinstinct/config.json`에 소유자 handle 하나를 씁니다. 전화번호는 국가번호 포함, 이메일 handle은 소문자로 정규화합니다. 파일이 없으면 유효하며 제품 기본값을 적용합니다. 파일이나 특정 범위의 형식이 잘못되면 그 범위는 기본값으로 돌아가고 `config_invalid_defaults_applied` 로그를 남기므로 Chat을 막지 않습니다.
 
@@ -135,7 +135,7 @@ live child 캡은 대화형과 모니터 자식을 모두 세며 모니터 우�
 
 ## 가재 전용 Chrome 프로파일
 
-브라우저 툴은 소유자의 개인 Chrome을 절대 건드리지 않음. 모든 브라우저 호출은 `app.browser = "chrome"`, `user_data_dir = ~/.openinstinct/chrome-profile`에 고정됨(런타임 프롬프트 + 익스텐션 강제): CDP 포트로 뜨는 전용 영구 프로파일(Chrome 136+는 비기본 데이터 디렉토리에서만 허용). 패널의 "Open Gajae's browser"(소켓 `browser.open`)로 그 프로파일을 눈에 보이게 열고, 가재가 쓸 사이트에 로그인하고 창을 닫음 — 로그인이 유지되고 내 세션과 격리되어 토큰 회전 사이트(카카오, 은행)가 나를 로그아웃시키지 않음. 프롬프트는 순차 작업에 탭 하나("main")를 재사용하도록 고정.
+브라우저 툴은 소유자의 개인 Chrome을 절대 건드리지 않음. 모든 브라우저 호출은 `app.browser = "chrome"`, `user_data_dir = ~/.openinstinct/chrome-profile`에 고정됨: 데몬이 CDP 포트 9223으로 띄우는 전용 영구 프로파일이며(Chrome 136+는 비기본 데이터 디렉토리에서만 허용), `chrome-devtools-mcp`가 그 CDP URL에만 붙으므로 고정은 프롬프트가 아니라 MCP 선언으로 강제됨. 패널의 "Open Gajae's browser"(소켓 `browser.open`)로 그 프로파일을 눈에 보이게 열고, 가재가 쓸 사이트에 로그인하고 창을 닫음 — 로그인이 유지되고 내 세션과 격리되어 토큰 회전 사이트(카카오, 은행)가 나를 로그아웃시키지 않음. 프롬프트는 순차 작업에 탭 하나("main")를 재사용하도록 고정.
 
 ## Presence (입력 중, 읽음)
 
@@ -143,11 +143,22 @@ live child 캡은 대화형과 모니터 자식을 모두 세며 모니터 우�
 
 ## 페르소나 (가재 소울)
 
-`daemon/src/persona/GAJAE_SOUL.md`가 모든 메인/자식 세션의 gjc 시스템 프롬프트 뒤에 붙음. 세션 생성 시 디스크에서 읽으므로, 편집하고(`soul-version` 주석 올리기) 패널의 "Refresh personality" 또는 소켓 `session.reload`를 보내면 재시작 없이 같은 트랜스크립트 위에 세션이 재구성됨. 응답에 현재 `soulVersion`이 담김.
+`daemon/src/persona/GAJAE_SOUL.md`가 모든 메인/자식 세션의 엔진 시스템 프롬프트 뒤에 붙음. 세션 생성 시 디스크에서 읽으므로, 편집하고(`soul-version` 주석 올리기) 패널의 "Refresh personality" 또는 소켓 `session.reload`를 보내면 재시작 없이 같은 트랜스크립트 위에 세션이 재구성됨. 응답에 현재 `soulVersion`이 담김.
 
-## gjc를 처음 쓰는 사람의 첫 실행
+## omo를 처음 쓰는 사람의 첫 실행
 
-릴리스 아카이브는 gjc 사전 설정이 필요 없음(벤더링된 SDK 버전에 고정된 `gjc` 바이너리를 함께 담고 있음). 설치 후 패널 Settings → AI account 탭이 `gjc auth-broker login <provider>`(Claude/ChatGPT 등 OAuth, 브라우저 콜백이 Mac에 못 닿을 때 코드 붙여넣기 폴백)를 돌리거나 API 키를 `~/.openinstinct/env`에 저장. 첫 성공 로그인이 그 프로바이더의 공개 기본 모델을 고르고, 모델 선택기는 `gjc --list-models`가 닿는 전부를 나열. 계정이 될 때까지 데몬은 "Gajae has no AI account yet"을 보고하고 패널이 Settings를 권함.
+릴리스 아카이브는 사전 설정이 필요 없음. omo 엔진(npm 패키지 `@code-yeongyu/senpi`)이 `node_modules` 안에 함께 들어 있어서 따로 받을 바이너리가 없음. 설치 후 패널 Settings → AI account 탭이 엔진 OAuth 로그인을 실행하거나(브라우저 콜백이 Mac에 못 닿으면 코드 붙여넣기 폴백) API 키를 `~/.openinstinct/env`에 저장. 첫 성공 로그인이 그 프로바이더의 공개 기본 모델을 고르고, 모델 선택기는 엔진이 닿는 모델을 전부 나열. 계정이 될 때까지 데몬은 "Gajae has no AI account yet"을 보고하고 패널이 Settings를 권함.
+
+### 엔진 상태와 위치
+
+omo 엔진이 쓰는 것은 전부 데몬 소유의 `~/.openinstinct/omo` 아래에 있음:
+
+- `auth.json` — 자격 증명(0600). 패널 계정 탭(엔진 OAuth 또는 키 붙여넣기), **Adopt**, 또는 첫 설치 때 `scripts/install-omo-state.sh`가 호스트 `~/.omo/agent`에서 한 번 시드.
+- `models.json` — 엔진이 닿는 프로바이더와 모델. **Settings → AI account**에서 추가한 커스텀 프로바이더 포함.
+- `settings.json` — 데몬이 의존하는 엔진 설정(스티어링 `all`, 엔진 자동 컴팩션 끔, 조용한 시작, fast mode용 `openai.serviceTier`).
+- `sessions/` — 메인 세션 트랜스크립트(`.jsonl`). 자식은 `~/.openinstinct/children` 아래에 자기 것을 둠.
+
+데몬은 `SENPI_CODING_AGENT_DIR`, `OMO_CODING_AGENT_DIR`, `PI_CODING_AGENT_DIR`를 이 디렉터리로 고정(launchd plist와 `env-bootstrap.ts` 양쪽)하므로 같은 Mac의 `omo`/`senpi` 설치와 상태를 공유하지 않음. 처음부터 다시 시작하려면 데몬을 멈추고 `~/.openinstinct/omo`를 지우면 다음 부팅에 `settings.json`, `models.json`, 빈 `auth.json`을 다시 시드함. 데몬 소유 Chrome은 CDP 9223 포트로 응답하며, 같은 프로파일의 다른 Chrome이 그 포트를 쥐고 있으면 한 번 종료하면 데몬이 자기 것을 다시 띄움.
 
 ## 체크인 (heartbeat)
 
@@ -228,7 +239,7 @@ Chat 전용 설치에는 `allowlistHandle`이 없습니다. 이를 이전 기능
 bash scripts/drills/failure-drills.sh
 ```
 
-임시 `HOME`, `OI_DRILL_MODE=1`, 결정적 가짜 어댑터, `OI_DRILL_HOLD` 심 마커를 쓰며 실제 `bun daemon/src/main.ts` 프로세스를 죽였다 살려 일곱 재시작 케이스를 검증: 턴 중, 자식 중, 저널 후/영수증 전, 클로저 중, 전파 중, 중간 배치 중, 일시정지 상태 재시작. 이후 재시작하지 않는 live-only `child-tools-while-held` 케이스를 실행한다. 마지막 케이스는 자식 턴을 붙잡은 채 메인 세션의 상태 조회·넛지·release를 호출하고 SDK 경계 latency telemetry를 확인한다. 이 환경 훅은 `OI_DRILL_*` 없이는 비활성이며 런치 에이전트 plist에 절대 넣지 말 것.
+임시 `HOME`, `OI_DRILL_MODE=1`, 결정적 가짜 어댑터, `OI_DRILL_HOLD` 심 마커를 쓰며 실제 `bun daemon/src/main.ts` 프로세스를 죽였다 살려 일곱 재시작 케이스를 검증: 턴 중, 자식 중, 저널 후/영수증 전, 클로저 중, 전파 중, 중간 배치 중, 일시정지 상태 재시작. 이후 재시작하지 않는 live-only `child-tools-while-held` 케이스를 실행한다. 마지막 케이스는 자식 턴을 붙잡은 채 메인 세션의 상태 조회·넛지·release를 호출하고 엔진 경계 latency telemetry를 확인한다. 이 환경 훅은 `OI_DRILL_*` 없이는 비활성이며 런치 에이전트 plist에 절대 넣지 말 것.
 
 ## Soak 절차
 

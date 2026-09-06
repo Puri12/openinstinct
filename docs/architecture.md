@@ -2,19 +2,24 @@
 
 One macOS launchd daemon (`openinstinctd`, a Bun runtime running
 `daemon/src/main.ts`), one menu-bar app, one tiny Accessibility helper. All state
-under `~/.openinstinct`. No root, SIP on, no third-party binaries other than `gjc`.
+under `~/.openinstinct`. No root, SIP on, no third-party binaries: the agent engine
+is the npm package `@code-yeongyu/senpi` (the one the `omo-ai` launcher ships), a
+normal dependency in `daemon/package.json` alongside `typebox` and
+`chrome-devtools-mcp`.
 
 ```
 ~/.openinstinct/
   bin/openinstinctd      bun runtime (copied, keeps its TCC identity across installs)
   bin/oi-presence        typing / read-receipt helper (Swift, AX)
-  bin/bun → openinstinctd  so the vendored gjc shim (#!/usr/bin/env bun) resolves
+  bin/bun → openinstinctd  the daemon's bun runtime, exposed as "bun" for tools that spawn it
   lib/                   daemon source + node_modules, copied by install.sh
   config.json            optional owner handle, name, model, limits
 
-  env                    provider keys (0600), loaded before any SDK import
+  env                    provider keys (0600), loaded before any engine import
+  omo/                   engine state: auth.json (credentials), models.json
+                         (providers/models), settings.json, sessions/
   state.db               SQLite: cursor, deliveries, children, monitors, receipts
-  session/               cwd of the main SDK session (never the repo)
+  session/               cwd of the main engine session (never the repo)
   children/{work,sessions,journal}/
   memory/                git repo, gajae-way layout
   chrome-profile/        the agent's own Chrome user-data-dir
@@ -26,9 +31,14 @@ under `~/.openinstinct`. No root, SIP on, no third-party binaries other than `gj
 ## Boot and lanes
 
 `env-bootstrap.ts` is the first import: it loads `~/.openinstinct/env` into
-`process.env` *before* `@gajae-code/coding-agent` is evaluated, because the SDK
-injects its own auto-imported credentials at module load and the owner's file
-must win. Then `startDaemon()`:
+`process.env` *before* the engine is evaluated, because the engine injects its own
+auto-imported credentials at module load and the owner's file must win. The same
+bootstrap pins the engine state directory: `SENPI_CODING_AGENT_DIR`,
+`OMO_CODING_AGENT_DIR`, and `PI_CODING_AGENT_DIR` all point at
+`~/.openinstinct/omo` (the launchd plist rendered by `install/plist.ts` sets them
+too), and the daemon seeds its settings there. The host's `~/.omo/agent` is never
+touched; `scripts/install-omo-state.sh` copies `auth.json` and `models.json` out
+of it once, on first install, and never overwrites. Then `startDaemon()`:
 
 1. **Bootstrap machine** probes `config` and AI credentials. Credentials are the
    only core-lane gate. A missing or malformed `config.json` does not block
@@ -54,7 +64,7 @@ the core start.
 
 The core and iMessage lanes have separate lifetimes:
 
-- The **core lane** owns the shared SDK session, children, monitors, memory, and
+- The **core lane** owns the shared engine session, children, monitors, memory, and
   chat surface. It gates only on AI credentials and can run with no iMessage
   configuration.
 - The **optional iMessage lane** owns the chat.db watcher, delivery service,
@@ -88,7 +98,7 @@ The primary NDJSON log records these lifecycle and routing events:
 - `config_missing_defaults_applied` and `config_invalid_defaults_applied` record
   configuration fallback while keeping the core eligible.
 - `session_reloaded` records a session reload (including lane/persona changes).
-- `router_initial_user_skipped` records the SDK router ignoring a run's own
+- `router_initial_user_skipped` records the engine router ignoring a run's own
   initial user message when attributing queued steering.
 
 ## Inbound: iMessage and Chat → shared owner turn
@@ -117,35 +127,53 @@ periodic status message.
 
 ## The main session
 
-`sdk-session/main-session.ts` wraps one `createAgentSession` from the SDK,
-reopened over the same transcript file on every daemon start (`SessionManager`).
-It is never respawned per message.
+`omo-session/main-session.ts` wraps one engine session built through
+`omo-session/omo-runtime.ts` (`createOmoServices` → `resolveModel` →
+`openOmoSession`), reopened over the same transcript file on every daemon start
+(`SessionManager`). It is never respawned per message.
 
 - **Serial queue**: turns, reloads, and compactions run one at a time.
-- **Steering**: `interruptMode=wait`, `steeringMode=all` — the in-flight tool
-  call finishes, then all queued owner texts enter together.
+- **Steering**: `steeringMode=all`. The omo engine's `steer()` waits for the
+  in-flight tool call before injecting, so there is no separate interrupt
+  setting; all queued owner texts then enter together.
 - **Segments**: assistant text is flushed to the owner at every tool-call start
   and every assistant `message_end`, so a turn that thinks–acts–thinks sends
   several short texts instead of one wall at the end. Only owner turns stream;
   internal turns (receipt follow-ups, monitor triage) are silent.
 - **Image forwarding**: a `read` of an image path by the agent admits that file
   as an attachment to the owner.
-- **Watchdog**: inactivity-based (default 300 s of *no* SDK events), reset by
+- **Watchdog**: inactivity-based (default 300 s of *no* engine events), reset by
   streaming, tool calls, and steers. On timeout: abort, or dispose + recreate over
   the same transcript.
-- **Compaction**: SDK auto-compaction is off; the daemon compacts at ≥ 50 %
+- **Compaction**: engine auto-compaction is off; the daemon compacts at ≥ 50 %
   context after a turn settles.
 - **Reload** (`session.reload`): dispose + recreate over the same transcript so
   a changed system prompt takes effect without losing history.
-- **System prompt** = gjc defaults, untouched → `persona/GAJAE_SOUL.md` (the
+- **System prompt** = the engine's own defaults, untouched, with the persona
+  appended through the engine's `appendSystemPrompt`: `persona/GAJAE_SOUL.md` (the
   character, versioned) → `persona/RUNTIME.md` (where it is: iMessage, plain
   text, delegation rules, monitor rules, Chrome profile; `{{ownerHandle}}` etc.
   substituted from config).
-- **Custom tools**: `delegate_background`, `send_image`, `monitor_author`,
-  `memory_search`, `memory_capture`, `memory_audit`.
-- **Extensions**: `browser/enforce.ts` blocks any `browser` tool call not
-  pinned to the dedicated Chrome profile and returns the exact `app` block to
-  retry with.
+- **Custom tools**: engine `ToolDefinition`s with typebox schemas
+  (`omo-session/tool-types.ts`): `delegate_background`, `send_image`,
+  `monitor_author`, `memory_search`, `memory_capture`, `memory_audit`,
+  `report_progress`, `child_status`, `child_nudge`.
+- **Browser tools**: `browser/chrome.ts` launches or reuses a daemon-owned Chrome
+  on `~/.openinstinct/chrome-profile` with `--remote-debugging-port=9223`
+  (`ensureChrome` probes `http://127.0.0.1:9223/json/version` first), and
+  `browser/enforce.ts` registers `chrome-devtools-mcp` as the MCP server
+  `browser` attached to that CDP URL. That gives the model 19 tools
+  (`includeTools`): `mcp_browser_navigate_page`, `mcp_browser_take_snapshot`,
+  `mcp_browser_take_screenshot`, `mcp_browser_click`, `mcp_browser_fill`,
+  `mcp_browser_evaluate_script`, `mcp_browser_wait_for`, and the
+  `mcp_browser_list_pages` / `new_page` / `select_page` / `close_page` family.
+  The profile pin lives in the MCP declaration, not in a prompt.
+- **Enforcement**: the enforcer blocks `task`, `subagent`, `job`, `eval`,
+  `workflow`, `team_create`, and `schedule_wakeup` calls, keeps the per-turn tool
+  budget (6 main, 40 children), the forbidden-path rules
+  (`~/.openinstinct/{children,logs,omo,state.db,env,secrets}`, other agents'
+  homes, session `.jsonl` files), the Discord bot-token rule, and the
+  main-session bash rule (timeout ≤ 20 s or `run_in_background: true`).
 
 ## Outbound: ChatHub and optional iMessage delivery
 
@@ -192,19 +220,24 @@ been idle for `presence.idleSec` (default 8 s) and hands focus back.
 concurrency cap (default 4) and a live-child cap (default 16). The live cap
 counts every non-terminal child; it evicts the oldest idle or cold child before
 rejecting a new admission when no evictable child remains. Production work uses
-`sdk-inprocess.ts`, a separate SDK session with the same soul, browser guard,
-and model pin. `gjc-external.ts` remains an explicit adapter for integrations
-that provide one, not the default production runner. Terminal reports are
+`runners/omo-inprocess.ts`, a separate engine session with the same soul, browser guard,
+and model pin (`OmoChildSessionFactory` on the same helper, one session dir per
+child under `~/.openinstinct/children`). `runners/omo-external.ts` remains an
+explicit adapter rather than the production default: it spawns the vendored
+engine CLI (`daemon/node_modules/@code-yeongyu/senpi/dist/cli.js`, or
+`dataPaths().omoCli` in the installed layout) with `-p --mode json
+--no-extensions --no-skills --no-prompt-templates --no-themes --no-context-files
+--session-dir <dir> --model <m>`. Terminal reports are
 written to a journal and become **receipts**; receipts are folded into the main
 session as follow-up turns (`children/receipts.ts`), projected to ≤ 1024 B.
 
 `delegate_background` children (`kind: task_tool`) are conversational. Their
 public durable lifecycle is `running → idle → cold → terminated`: idle children
-keep a warm SDK session for the warm TTL, then dispose the object while retaining
+keep a warm engine session for the warm TTL, then dispose the object while retaining
 the session-file transcript; a cold nudge reopens that transcript, while the
 idle timeout terminates the child. Main-session `child_status` reads a precomputed
 in-memory status snapshot, and `child_nudge` only updates an in-memory lifecycle
-queue before scheduling the pump; neither tool enters SQLite or a child SDK
+queue before scheduling the pump; neither tool enters SQLite or a child engine
 session at invocation time. Their latency alert threshold is detection telemetry,
 not a preemption promise. Conversational children alone receive `report_progress`;
 updates are durably stored, UTF-8 bounded, batched for 3 seconds by default,
@@ -264,12 +297,22 @@ against them. Notable verbs: `status.get` (bootstrap, session, children,
 monitors, `attention`), `monitors.*` including `monitors.run`,
 `daemon.pause/resume/restart`, `session.compact/reload`, `settings.get/set`,
 `models.list`, `accounts.*`, `providers.custom` (writes a provider block into
-`~/.gjc/agent/models.yml`), `browser.open`, and `memory.backfillCaptures`.
-OAuth account login uses `gjc auth-broker login`, with a paste-code fallback.
+`~/.openinstinct/omo/models.json`, one of `openai-completions`,
+`openai-responses`, `anthropic-messages`), `browser.open`, and
+`memory.backfillCaptures`. `settings/service.ts` serves all of this in process on
+the engine: `models.list` comes from the engine's model runtime (ids are
+`provider/model`), `accounts.list` from stored credentials, and
+`accounts.providers` from the engine's OAuth providers (anthropic, openai-codex,
+github-copilot, openrouter, kimi-coding, xai, cursor, claude-sdk-oauth,
+cursor-cli-oauth, radius). `accounts.login` runs the engine's OAuth flow and hands
+the URL to the panel, with `accounts.login.finish` as the paste-code fallback;
+`accounts.logout` removes the credential. Fast mode sets `openai.serviceTier` to
+`priority` in `~/.openinstinct/omo/settings.json`.
 
-`accounts.discover` lists existing Claude, ChatGPT/Codex CLI credentials that can
-be adopted; `accounts.adopt` changes the daemon's selected credential only after
-the owner clicks **Adopt**. Adoption is never automatic because it may start
+`accounts.discover` (`settings/credential-adopt.ts`) looks in
+`~/.omo/agent/auth.json`, `~/.codex/auth.json`, and `~/.claude/.credentials.json`
+and lists what can be adopted; `accounts.adopt` copies one into
+`~/.openinstinct/omo/auth.json` only after the owner clicks **Adopt**. Adoption is never automatic because it may start
 billing an existing subscription. `monitors.run` dispatches one immediate run
 without changing the monitor's schedule or enabled state.
 
@@ -311,11 +354,13 @@ Aqua session.
 `scripts/install.sh` copies the repo into `~/.openinstinct/lib`, installs prod
 deps, keeps the daemon binary's inode unless bun changed (so TCC grants
 survive), renders the launchd plist with a PATH that includes `~/.local/bin`,
-and installs/launches the panel and presence helper.
+and installs/launches the panel and presence helper. It installs the whole
+workspace, engine included, and then runs `scripts/install-omo-state.sh` to seed
+`~/.openinstinct/omo` on a first install.
 
 `scripts/build-release.sh` compiles the panel and the presence helper, assembles
-that payload with a bun runtime and the `gjc` binary pinned to the vendored SDK,
-and emits `dist/openinstinct-<version>-darwin-<arch>.tar.gz` plus a `.sha256`.
+that payload with a bun runtime and the repository itself. The engine arrives as
+an ordinary npm dependency, so no agent binary is bundled. The script emits `dist/openinstinct-<version>-darwin-<arch>.tar.gz` plus a `.sha256`.
 
 `scripts/install-remote.sh` is the curl entry point: it resolves the release
 asset, verifies the checksum, extracts the archive, and hands the directory to
@@ -334,7 +379,7 @@ approval prompt.
 - Secrets: env file 0600 and refused if looser; settings snapshot reports keys
   as set/unset only; credentials the owner texts are stored per-service and
   never echoed.
-- The browser can only run on the agent's own Chrome profile (enforced, not
-  advised).
+- The browser can only run on the agent's own Chrome profile: the MCP server
+  declaration pins the CDP endpoint, so it is enforced rather than advised.
 - iMessage-bound effects use durable, idempotent delivery rows; Chat hub events are
   fire-and-forget and sequenced.
