@@ -17,7 +17,19 @@ library="$state_home/lib"
 library_stage="$state_home/lib.new.$$"
 library_previous="$state_home/lib.previous.$$"
 plist="$home_dir/Library/LaunchAgents/co.openinstinct.daemon.plist"
-bun_path=$(command -v bun)
+# OI_BUN pins the runtime (bootstrap-from-payload.sh passes the bundled one);
+# otherwise the first bun on PATH. The lockfile needs the version package.json
+# declares, so refuse anything older instead of failing inside `bun install`.
+bun_path=${OI_BUN:-$(command -v bun || true)}
+[ -n "$bun_path" ] || { printf '%s\n' "bun is required (or run the release installer, which bundles it)" >&2; exit 1; }
+required_bun=$(sed -nE 's/.*"packageManager": *"bun@([0-9.]+)".*/\1/p' "$repo_root/package.json")
+if [ -n "$required_bun" ]; then
+  have_bun=$("$bun_path" --version)
+  if [ "$(printf '%s\n%s\n' "$required_bun" "$have_bun" | sort -V | head -n 1)" != "$required_bun" ]; then
+    printf '%s\n' "bun $have_bun at $bun_path is older than the $required_bun this release needs; install a newer bun or use the release archive, which bundles one" >&2
+    exit 1
+  fi
+fi
 
 cleanup() {
   if [ -n "$library_previous" ] && [ -d "$library_previous" ] && [ ! -e "$library" ]; then
@@ -123,7 +135,7 @@ if [ -f "$state_home/bin/oi-presence.new" ]; then
 fi
 # `gjc` (vendored) is a `#!/usr/bin/env bun` shim; expose our runtime as `bun`.
 ln -sf "$binary" "$state_home/bin/bun"
-bun "$repo_root/scripts/render-plist.ts" "$home_dir" "$plist"
+"$bun_path" "$repo_root/scripts/render-plist.ts" "$home_dir" "$plist"
 plutil -lint "$plist"
 launchctl bootstrap "gui/$uid" "$plist"
 # macOS 26 defers RunAtLoad/KeepAlive nondemand spawns ("inefficient" heuristic);
