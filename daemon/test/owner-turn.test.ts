@@ -469,6 +469,40 @@ describe("OwnerTurnIngress", () => {
     }
   });
 
+  test("(9b) a reply delivered only as streamed segments is still captured to memory", async () => {
+    const h = createHarness();
+    try {
+      const admitted = h.ingress.admit(request("seg", "imessage", "what did we decide?"));
+      expect(await admitted).toBe("started");
+      const run = activeTurn({ turnId: "seg" });
+      h.ingress.onTurnStarted(run.active);
+      h.ingress.onSegment("We decided A.");
+      h.ingress.onSegment("And B follows from it.");
+      await settle(run, { kind: "reply", text: "" });
+
+      expect(messages(h).filter((m) => m.final === true)).toHaveLength(0);
+      expect(h.memory.captures).toHaveLength(1);
+      expect(h.memory.captures[0]).toMatchObject({
+        origin: { kind: "owner-chat", reference: "seg" },
+        userText: "what did we decide?",
+        replyText: "We decided A. And B follows from it.",
+        idempotencyKey: "memory:owner-turn:seg",
+      });
+      expect(h.logger.events("turn_finished").at(-1)).toMatchObject({ segmentsOnly: true, captured: true });
+
+      h.session.running = false;
+      const empty = h.ingress.admit(request("empty", "imessage", "hello?"));
+      expect(await empty).toBe("started");
+      const emptyRun = activeTurn({ turnId: "empty" });
+      h.ingress.onTurnStarted(emptyRun.active);
+      await settle(emptyRun, { kind: "reply", text: "" });
+      expect(h.memory.captures).toHaveLength(1);
+      expect(h.logger.events("turn_finished").at(-1)).toMatchObject({ segmentsOnly: true, captured: false });
+    } finally {
+      h.store.close();
+    }
+  });
+
   test("(10) handles parity, breaker, capture intent, pause suppression, and no active lane", async () => {
     const h = createHarness();
     try {

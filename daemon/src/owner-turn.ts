@@ -501,35 +501,34 @@ export class OwnerTurnIngress {
 
       lane === undefined ? undefined : this.deps.afterTurn?.(lane.session);
       const text = result.kind === "reply" ? result.text : visibleTurnFailure(result);
-      if (text.length === 0) {
-        this.deps.logger.write("info", "sdk_session", "turn_finished", {
+      if (text.length > 0) {
+        context.binding.admit(this.ownerOutbound(context, {
+          idempotencyKey: `inbound-turn:${context.turnId}`,
+          text,
+          quotedText: context.request.text,
+        }));
+        const finalEvent = this.emitMessage({
+          role: "assistant",
+          text: toPlainText(text),
           turnId: context.turnId,
-          durationMs: Date.now() - startedAt,
-          segmentsOnly: true,
+          final: true,
         });
-        return;
+        context.events.push(finalEvent);
       }
 
-      context.binding.admit(this.ownerOutbound(context, {
-        idempotencyKey: `inbound-turn:${context.turnId}`,
-        text,
-        quotedText: context.request.text,
-      }));
-      const finalEvent = this.emitMessage({
-        role: "assistant",
-        text: toPlainText(text),
-        turnId: context.turnId,
-        final: true,
-      });
-      context.events.push(finalEvent);
-
+      // What the owner actually saw: the final text when there is one, else
+      // the streamed segments joined. A reply delivered entirely as segments
+      // (the common case since final-after-segments was deduplicated) is a
+      // real exchange and must reach the daily memory file, or there is
+      // nothing for canonicalization to work from.
+      const delivered = text.length > 0 ? text : deliveredSegmentText(context.events);
       const memory = lane?.memory;
-      if (memory !== undefined) {
+      if (memory !== undefined && delivered.length > 0) {
         try {
           memory.enqueueCapture({
             origin: { kind: "owner-chat", reference: context.turnId },
             userText: memoryDigest(context.request.text),
-            replyText: memoryDigest(text),
+            replyText: memoryDigest(delivered),
             idempotencyKey: `memory:owner-turn:${context.turnId}`,
           });
         } catch (error) {
@@ -538,6 +537,16 @@ export class OwnerTurnIngress {
             message: error instanceof Error ? error.message : String(error),
           });
         }
+      }
+
+      if (text.length === 0) {
+        this.deps.logger.write("info", "sdk_session", "turn_finished", {
+          turnId: context.turnId,
+          durationMs: Date.now() - startedAt,
+          segmentsOnly: true,
+          captured: delivered.length > 0,
+        });
+        return;
       }
 
       this.deps.logger.write(result.kind === "reply" ? "info" : "warn", "sdk_session", "turn_finished", {
@@ -733,6 +742,20 @@ function transcriptUserText(content: unknown): string | undefined {
   return text.length === 0 ? undefined : text;
 }
 
+/** Assistant text the owner received during a turn as streamed segments, in order. */
+function deliveredSegmentText(events: readonly ChatEvent[]): string {
+  const parts: string[] = [];
+  for (const event of events) {
+    if (event.topic !== "chat.message") {
+      continue;
+    }
+    const payload = event.payload as { readonly role?: unknown; readonly text?: unknown; readonly final?: unknown };
+    if (payload.role === "assistant" && payload.final !== true && typeof payload.text === "string" && payload.text.length > 0) {
+      parts.push(payload.text);
+    }
+  }
+  return parts.join("\n");
+}
 function memoryDigest(text: string): string {
   const compact = text.replace(/\s+/g, " ").trim();
   return Array.from(compact).slice(0, 500).join("");
