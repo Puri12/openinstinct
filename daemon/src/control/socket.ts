@@ -856,11 +856,7 @@ function statusPayload(
       hasReplied: store.hasConfirmedDelivery(),
     },
     activeChildren: store.listChildren().filter(isActiveChild).map(childSummaryPayload),
-    recentChildren: store.listChildren()
-      .filter((child) => !isActiveChild(child))
-      .sort((a, b) => (b.lastActivityAt ?? b.updatedAt).localeCompare(a.lastActivityAt ?? a.updatedAt))
-      .slice(0, 10)
-      .map(childSummaryPayload),
+    recentChildren: recentChildren(store.listChildren()).map(childSummaryPayload),
     attention: attentionPayload(store, snapshot, context),
 
     monitors: new MonitorStore(store).list().map((monitor) => monitorSummaryPayload(monitor, now)),
@@ -986,6 +982,19 @@ function remediationText(snapshot: BootstrapSnapshot): string {
       }
       return snapshot.reason ?? "Daemon is ready.";
   }
+}
+
+type RecentChild = { readonly state: string; readonly updatedAt: string; readonly lastActivityAt?: string };
+
+/**
+ * Asleep (cold) children are done-but-revivable, so every one of them stays
+ * visible; finished children fill the remaining slots, newest first.
+ */
+function recentChildren<T extends RecentChild>(children: readonly T[]): T[] {
+  const byActivity = (a: T, b: T): number => (b.lastActivityAt ?? b.updatedAt).localeCompare(a.lastActivityAt ?? a.updatedAt);
+  const asleep = children.filter((child) => child.state === "cold").sort(byActivity);
+  const finished = children.filter((child) => !isActiveChild(child) && child.state !== "cold").sort(byActivity);
+  return [...asleep, ...finished.slice(0, Math.max(0, 10 - asleep.length))];
 }
 
 /** Cold children are resumable transcripts, not work in progress; they belong in "Recent tasks". */
