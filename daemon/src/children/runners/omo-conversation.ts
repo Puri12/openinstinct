@@ -1,29 +1,29 @@
 import { join } from "node:path";
 
 import type { ChildConversation, ChildTurnResult, ConversationalChildRunner } from "../conversation.ts";
-import { SdkChildSessionFactory, type ChildAgentSession, type ChildSessionFactory } from "./sdk-inprocess.ts";
+import { OmoChildSessionFactory, type ChildAgentSession, type ChildSessionFactory } from "./omo-inprocess.ts";
 import { createReportProgressTool } from "../report-progress-tool.ts";
 
-export interface SdkConversationRunnerOptions {
+export interface OmoConversationRunnerOptions {
   readonly root: string;
   readonly factory?: ChildSessionFactory;
-  /** Required when no factory is injected: the production SDK child model. */
+  /** Required when no factory is injected: the production omo engine child model. */
   readonly modelPattern?: string;
   readonly onEvent?: (event: string, fields: Record<string, unknown>) => void;
   readonly interimMaxBytes?: number;
   readonly interimRatePerMinute?: number;
 }
 
-/** Long-lived SDK adapter used only by delegate_background children. */
-export class SdkConversationRunner implements ConversationalChildRunner {
-  public readonly name = "sdk-conversation";
+/** Long-lived omo engine adapter used only by delegate_background children. */
+export class OmoConversationRunner implements ConversationalChildRunner {
+  public readonly name = "omo-conversation";
   private readonly factory: ChildSessionFactory;
 
-  public constructor(private readonly options: SdkConversationRunnerOptions) {
+  public constructor(private readonly options: OmoConversationRunnerOptions) {
     if (!options.factory && !options.modelPattern) {
-      throw new Error("SdkConversationRunner needs modelPattern when using the production SDK factory");
+      throw new Error("OmoConversationRunner needs modelPattern when using the production omo engine factory");
     }
-    this.factory = options.factory ?? new SdkChildSessionFactory(options.modelPattern!);
+    this.factory = options.factory ?? new OmoChildSessionFactory(options.modelPattern!);
   }
 
   public async open(
@@ -71,7 +71,7 @@ export class SdkConversationRunner implements ConversationalChildRunner {
       ]);
       throw abortError();
     }
-    return new SdkChildConversation(session, (event, fields) => this.options.onEvent?.(event, { childId: input.childId, ...fields }));
+    return new OmoChildConversation(session, (event, fields) => this.options.onEvent?.(event, { childId: input.childId, ...fields }));
   }
 }
 
@@ -90,7 +90,7 @@ interface PendingTurn {
   onProgress: (progress: { readonly tokens?: number; readonly toolCalls?: number }) => void;
 }
 
-class SdkChildConversation implements ChildConversation {
+class OmoChildConversation implements ChildConversation {
   private readonly unsubscribe: () => void;
   private generation = 0;
   private readonly seenRunTokens = new Set<string>();
@@ -205,13 +205,13 @@ class SdkChildConversation implements ChildConversation {
     const type = data.type;
     if (type === "agent_start") {
       // A session may emit maintenance/continuation starts while the same
-      // prompt is still unwinding. Only a current, unseen SDK token can bind
+      // prompt is still unwinding. Only a current, unseen engine run token can bind
       // this generation; tokenless starts are intentionally non-authoritative.
       if (!pending.promptSubmitted) {
         return;
       }
-      const token = typeof data.sdkRunToken === "string" && data.sdkRunToken.length > 0
-        ? data.sdkRunToken
+      const token = typeof data.runToken === "string" && data.runToken.length > 0
+        ? data.runToken
         : undefined;
       if (!pending.started && token !== undefined) {
         if (this.seenRunTokens.has(token) || this.settledRunTokens.has(token)) {
@@ -243,9 +243,9 @@ class SdkChildConversation implements ChildConversation {
       }
       return;
     }
-    // Message updates do not carry sdkRunToken in the SDK event contract. They
+    // Message updates do not carry runToken in the omo engine event contract. They
     // are authoritative only after this generation has claimed an unseen token;
-    // tokenless SDK builds remain on the prompt()/waitForIdle fallback.
+    // tokenless engine builds remain on the prompt()/waitForIdle fallback.
     if (isTextDelta(event)) {
       if (!pending.started || pending.token === undefined) {
         return;
@@ -305,11 +305,11 @@ class SdkChildConversation implements ChildConversation {
 
   private matchesToken(pending: PendingTurn, event: Record<string, unknown>): boolean {
     if (!pending.started || pending.token === undefined) {
-      // Tokenless SDK builds use the prompt()/waitForIdle fallback; an
+      // Tokenless engine builds use the prompt()/waitForIdle fallback; an
       // uncorrelated tokenless terminal event is never authoritative.
       return false;
     }
-    return event.sdkRunToken === pending.token;
+    return event.runToken === pending.token;
   }
 
   private completedResult(pending: PendingTurn): ChildTurnResult {

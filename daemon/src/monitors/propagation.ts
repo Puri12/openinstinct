@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
-import type { OwnerReplyInput } from "../sdk-session/main-session.ts";
-import { isSafeOwnerText } from "../sdk-session/owner-text.ts";
+import type { OwnerReplyInput } from "../omo-session/main-session.ts";
+import { isSafeOwnerText } from "../omo-session/owner-text.ts";
 import { holdForDrill } from "../drills/hooks.ts";
 import { MEMORY_CANONICALIZATION_PENDING_META_PREFIX } from "../memory/adapters/canonicalize.ts";
 
@@ -841,7 +841,7 @@ function leaseOf(event: MonitorEventRecord): MonitorEventLease {
 function childPrompt(monitor: MonitorSpec, event: MonitorEventRecord): string {
   return [
     `You are executing monitor “${monitor.name}”.`,
-    "Never read ~/.openinstinct/children, ~/.openinstinct/logs, ~/.openinstinct/gjc, session .jsonl transcripts, state.db, env, or secrets: they are huge and off-limits; anything you need from the past is in ~/.openinstinct/memory via memory_search. Keep total tool output small.",
+    "Never read ~/.openinstinct/children, ~/.openinstinct/logs, ~/.openinstinct/omo, session .jsonl transcripts, state.db, env, or secrets: they are huge and off-limits; anything you need from the past is in ~/.openinstinct/memory via memory_search. Keep total tool output small.",
     "Return a concise factual owner update as plain text (it is sent as an iMessage: no Markdown, no lists, no code fences). Do not send messages directly.",
     `Instruction: ${monitor.instruction}`,
     `Event type: ${event.eventType}`,

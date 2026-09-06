@@ -14,7 +14,7 @@ Snapshot: `sha256:5335ad16355de6dac1d5d534f86c8be3bcacfc798f04fa90b18da5853d6633
 ## Verification
 
 - `cd daemon && bunx tsc --noEmit --pretty false`: PASS.
-- Focused G007 suite (`cd daemon && bun test test/sdk-session/main-session.test.ts test/sdk-session/child-tools.test.ts test/children/sdk-conversation.test.ts test/children/interim.test.ts test/children/receipts.test.ts test/monitors/propagation.test.ts test/children/lifecycle.test.ts test/children/lifecycle-conversational.test.ts test/children/lifecycle-hardening.test.ts test/e2e/conversational-child.slice.test.ts test/e2e/drills/mid-interim-batch.test.ts test/adversarial/background-child-red-team.test.ts`): PASS, 92 pass / 0 fail, 483 assertions.
+- Focused G007 suite (`cd daemon && bun test test/omo-session/main-session.test.ts test/omo-session/child-tools.test.ts test/children/omo-conversation.test.ts test/children/interim.test.ts test/children/receipts.test.ts test/monitors/propagation.test.ts test/children/lifecycle.test.ts test/children/lifecycle-conversational.test.ts test/children/lifecycle-hardening.test.ts test/e2e/conversational-child.slice.test.ts test/e2e/drills/mid-interim-batch.test.ts test/adversarial/background-child-red-team.test.ts`): PASS, 92 pass / 0 fail, 483 assertions.
 - `cd daemon && bun test`: 344 pass / 2 skip / 8 fail, 1,319 assertions. All eight failures are the post-rebase `test/store.test.ts` abandoned-v8 helper creating interim tables on an already-v8 database; no G007 focused test fails. SDK-isolation can time out when the repo dependency is not installed; do not mask that in source.
 - `bash scripts/drills/failure-drills.sh`: PASS; all seven restart drills plus live `child-tools-while-held` pass.
 - `git diff --check`: PASS.

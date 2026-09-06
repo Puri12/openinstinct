@@ -11,7 +11,7 @@ export interface EnvFileResult {
  * runs under launchd with no login shell, so provider API keys the owner keeps
  * in `.zshrc` never reach it; this file is the durable, mode-0600 equivalent.
  * The file is authoritative: the owner wrote it deliberately, whereas anything
- * already in process.env came from launchd defaults or an SDK auto-import.
+ * already in process.env came from launchd defaults or an omo engine auto-import.
  */
 export function loadEnvFile(path: string): EnvFileResult {
   if (!existsSync(path)) {

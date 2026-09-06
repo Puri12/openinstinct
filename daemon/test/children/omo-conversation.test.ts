@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
-import { SdkConversationRunner } from "../../src/children/runners/sdk-conversation.ts";
-import type { ChildAgentSession, ChildSessionFactory } from "../../src/children/runners/sdk-inprocess.ts";
+import { OmoConversationRunner } from "../../src/children/runners/omo-conversation.ts";
+import type { ChildAgentSession, ChildSessionFactory } from "../../src/children/runners/omo-inprocess.ts";
 
 class FakeSession implements ChildAgentSession {
   public readonly sessionFile = "/tmp/conversation.jsonl";
@@ -52,21 +52,21 @@ class FakeSession implements ChildAgentSession {
   }
 }
 
-function runnerFor(session: FakeSession, calls: unknown[] = [], events: Array<{ readonly event: string; readonly fields: Record<string, unknown> }> = []): SdkConversationRunner {
+function runnerFor(session: FakeSession, calls: unknown[] = [], events: Array<{ readonly event: string; readonly fields: Record<string, unknown> }> = []): OmoConversationRunner {
   const factory: ChildSessionFactory = {
     create: async (input) => {
       calls.push(input);
       return session;
     },
   };
-  return new SdkConversationRunner({ root: "/tmp/children", factory, onEvent: (event, fields) => events.push({ event, fields }) });
+  return new OmoConversationRunner({ root: "/tmp/children", factory, onEvent: (event, fields) => events.push({ event, fields }) });
 }
 
 async function nextTick(): Promise<void> {
   await Bun.sleep(1);
 }
 
-describe("SdkConversationRunner", () => {
+describe("OmoConversationRunner", () => {
   test("settles only on a correlated non-maintenance agent_end", async () => {
     const session = new FakeSession();
     const runner = runnerFor(session);
@@ -76,15 +76,15 @@ describe("SdkConversationRunner", () => {
     void turn.then(() => { settled = true; });
     await nextTick();
 
-    session.emit({ type: "agent_start", sdkRunToken: "run-1" });
+    session.emit({ type: "agent_start", runToken: "run-1" });
     session.emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "answer" } });
-    session.emit({ type: "agent_end", sdkRunToken: "run-1", stopReason: "maintenance", maintenanceOutcome: "completed" });
+    session.emit({ type: "agent_end", runToken: "run-1", stopReason: "maintenance", maintenanceOutcome: "completed" });
     await nextTick();
     expect(settled).toBe(false);
-    session.emit({ type: "agent_end", sdkRunToken: "other", stopReason: "completed" });
+    session.emit({ type: "agent_end", runToken: "other", stopReason: "completed" });
     await nextTick();
     expect(settled).toBe(false);
-    session.emit({ type: "agent_end", sdkRunToken: "run-1", stopReason: "completed" });
+    session.emit({ type: "agent_end", runToken: "run-1", stopReason: "completed" });
 
     await expect(turn).resolves.toEqual({ state: "completed", text: "answer" });
     session.promptGate.resolve();
@@ -113,8 +113,8 @@ describe("SdkConversationRunner", () => {
     const conversation = await runner.open({ childId: "child", title: "Child", sessionFile: "/tmp/existing.jsonl" }, new AbortController().signal);
     const failed = conversation.turn("fail", new AbortController().signal, () => undefined);
     await nextTick();
-    session.emit({ type: "agent_start", sdkRunToken: "run-1" });
-    session.emit({ type: "agent_failed", sdkRunToken: "run-1", error: { code: "provider_error", message: "provider refused" } });
+    session.emit({ type: "agent_start", runToken: "run-1" });
+    session.emit({ type: "agent_failed", runToken: "run-1", error: { code: "provider_error", message: "provider refused" } });
     await expect(failed).resolves.toEqual({ state: "failed", text: "", errorCode: "provider_error", errorMessage: "provider refused" });
     session.promptGate.resolve();
 
@@ -122,9 +122,9 @@ describe("SdkConversationRunner", () => {
     const controller = new AbortController();
     const cancelled = conversation.turn("cancel", controller.signal, () => undefined);
     await nextTick();
-    session.emit({ type: "agent_start", sdkRunToken: "run-2" });
+    session.emit({ type: "agent_start", runToken: "run-2" });
     controller.abort();
-    session.emit({ type: "agent_end", sdkRunToken: "run-2", stopReason: "cancelled" });
+    session.emit({ type: "agent_end", runToken: "run-2", stopReason: "cancelled" });
     await expect(cancelled).resolves.toMatchObject({ state: "cancelled", errorCode: "cancelled" });
     expect(session.abortCalls).toBe(1);
     expect(calls).toEqual([expect.objectContaining({ childId: "child", sessionFile: "/tmp/existing.jsonl", conversational: true })]);
@@ -135,10 +135,10 @@ describe("SdkConversationRunner", () => {
     const conversation = await runner.open({ childId: "child", title: "Child" }, new AbortController().signal);
     const turn = conversation.turn("work", new AbortController().signal, () => undefined);
     await nextTick();
-    session.emit({ type: "agent_start", sdkRunToken: "run-1" });
-    session.emit({ type: "agent_start", sdkRunToken: "maintenance" });
+    session.emit({ type: "agent_start", runToken: "run-1" });
+    session.emit({ type: "agent_start", runToken: "maintenance" });
     session.emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "work-answer" } });
-    session.emit({ type: "agent_end", sdkRunToken: "run-1", stopReason: "completed" });
+    session.emit({ type: "agent_end", runToken: "run-1", stopReason: "completed" });
     await expect(turn).resolves.toEqual({ state: "completed", text: "work-answer" });
     session.promptGate.resolve();
   });
@@ -198,19 +198,19 @@ describe("SdkConversationRunner", () => {
 
     const first = conversation.turn("first", new AbortController().signal, () => undefined);
     await nextTick();
-    session.emit({ type: "agent_start", sdkRunToken: "run-1" });
+    session.emit({ type: "agent_start", runToken: "run-1" });
     session.emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "first-answer" } });
-    session.emit({ type: "agent_end", sdkRunToken: "run-1", stopReason: "completed" });
+    session.emit({ type: "agent_end", runToken: "run-1", stopReason: "completed" });
     await expect(first).resolves.toEqual({ state: "completed", text: "first-answer" });
 
     const second = conversation.turn("second", new AbortController().signal, () => undefined);
     await nextTick();
-    session.emit({ type: "agent_start", sdkRunToken: "run-1" });
+    session.emit({ type: "agent_start", runToken: "run-1" });
     session.emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "late-old-text" } });
-    session.emit({ type: "agent_end", sdkRunToken: "run-1", stopReason: "completed" });
-    session.emit({ type: "agent_start", sdkRunToken: "run-2" });
+    session.emit({ type: "agent_end", runToken: "run-1", stopReason: "completed" });
+    session.emit({ type: "agent_start", runToken: "run-2" });
     session.emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "second-answer" } });
-    session.emit({ type: "agent_end", sdkRunToken: "run-2", stopReason: "completed" });
+    session.emit({ type: "agent_end", runToken: "run-2", stopReason: "completed" });
 
     await expect(second).resolves.toEqual({ state: "completed", text: "second-answer" });
   });

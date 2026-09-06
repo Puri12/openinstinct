@@ -19,5 +19,11 @@ describe("launchd plist materialization", () => {
     expect(plist).toContain("<key>SuccessfulExit</key>\n    <false/>");
     expect(plist).toContain("<key>RunAtLoad</key>\n  <true/>");
     expect(plist).toContain("<key>ProcessType</key>\n  <string>Interactive</string>");
+    expect(plist).toContain("<key>SENPI_CODING_AGENT_DIR</key>");
+    expect(plist).toContain("<key>OMO_CODING_AGENT_DIR</key>");
+    expect(plist).toContain("<key>PI_CODING_AGENT_DIR</key>");
+    expect(plist).toContain(`<string>${paths.root}/omo</string>`);
+    // Exactly the three omo engine dir keys: nothing points the engine anywhere else.
+    expect((plist.match(/_CODING_AGENT_DIR<\/key>/g) ?? []).length).toBe(3);
   });
 });

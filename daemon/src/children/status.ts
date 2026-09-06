@@ -11,7 +11,7 @@ export interface ChildStatusReader {
 /**
  * Store-backed cache for the synchronous main-session status tool. Production
  * callers refresh this snapshot from lifecycle mutation events; status reads
- * never enter SQLite or touch an SDK session.
+ * never enter SQLite or touch an omo engine session.
  */
 export class StateStoreChildStatusReader implements ChildStatusReader {
   private children = new Map<string, ChildRecord>();

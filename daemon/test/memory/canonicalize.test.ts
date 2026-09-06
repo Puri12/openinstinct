@@ -6,7 +6,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 
 import { ChildLifecycle } from "../../src/children/lifecycle.ts";
 import { ChildRegistry } from "../../src/children/registry.ts";
-import { SdkInProcessRunner, type ChildSessionFactory } from "../../src/children/runners/sdk-inprocess.ts";
+import { OmoInProcessRunner, type ChildSessionFactory } from "../../src/children/runners/omo-inprocess.ts";
 import { TerminalJournal } from "../../src/children/terminal-journal.ts";
 import { MEMORY_BACKFILL_CHILD_TITLE, MEMORY_CANONICALIZATION_PENDING_META_PREFIX, MemoryCanonicalizer } from "../../src/memory/adapters/canonicalize.ts";
 import { MemoryClosureQueue } from "../../src/memory/adapters/intents.ts";
@@ -32,7 +32,7 @@ async function waitFor(predicate: () => boolean, timeoutMs = 2_000): Promise<voi
 }
 
 describe("memory canonicalization child flow", () => {
-  test("promotes a fact through a stubbed SDK child, regenerates the map, and preserves raw capture bytes", async () => {
+  test("promotes a fact through a stubbed omo engine child, regenerates the map, and preserves raw capture bytes", async () => {
     const home = mkdtempSync(join(tmpdir(), "openinstinct-memory-canonicalize-"));
     directories.push(home);
     const store: StateStore = openStateStore(join(home, "state.db"));
@@ -69,7 +69,7 @@ describe("memory canonicalization child flow", () => {
         };
       },
     };
-    const runner = new SdkInProcessRunner({ root: join(home, "children"), factory });
+    const runner = new OmoInProcessRunner({ root: join(home, "children"), factory });
     const lifecycle = new ChildLifecycle({
       registry: new ChildRegistry(store, { now: () => now }),
       journal: new TerminalJournal(join(home, "children", "journal")),
@@ -155,7 +155,7 @@ describe("memory canonicalization child flow", () => {
         };
       },
     };
-    const runner = new SdkInProcessRunner({ root: join(home, "children"), factory });
+    const runner = new OmoInProcessRunner({ root: join(home, "children"), factory });
     const lifecycle = new ChildLifecycle({
       registry: new ChildRegistry(store, { now: () => now }),
       journal: new TerminalJournal(join(home, "children", "journal")),

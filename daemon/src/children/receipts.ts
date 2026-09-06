@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 
 import type { ChildRecord, ReceiptRecord, StateStore } from "../store/index.ts";
-import { type MainTurnResult, type OwnerReplyInput } from "../sdk-session/main-session.ts";
-import { OWNER_SILENT_MARKER, isSafeOwnerText } from "../sdk-session/owner-text.ts";
+import { type MainTurnResult, type OwnerReplyInput } from "../omo-session/main-session.ts";
+import { OWNER_SILENT_MARKER, isSafeOwnerText } from "../omo-session/owner-text.ts";
 import type { TerminalReport } from "./terminal-journal.ts";
 import { truncateUtf8, utf8Bytes } from "./utf8.ts";
 

@@ -28,13 +28,13 @@ describe("main-session memory tools", () => {
       const audit = createMemoryAuditTool(closure);
       expect([capture.name, search.name, audit.name]).toEqual(["memory_capture", "memory_search", "memory_audit"]);
 
-      const captured = await capture.execute("capture", { note: "Owner prefers concise summaries." }, undefined, {} as never);
+      const captured = await capture.execute("capture", { note: "Owner prefers concise summaries." }, undefined, undefined, {} as never);
       expect(captured.content[0]).toMatchObject({ type: "text", text: expect.stringContaining("accepted") });
       await closure.drain();
 
-      const found = await search.execute("search", { query: "concise summaries", limit: 10 }, undefined, {} as never);
+      const found = await search.execute("search", { query: "concise summaries", limit: 10 }, undefined, undefined, {} as never);
       expect(found.content[0]).toMatchObject({ type: "text", text: expect.stringContaining("daily/2026-05-01.md") });
-      const audited = await audit.execute("audit", {}, undefined, {} as never);
+      const audited = await audit.execute("audit", {}, undefined, undefined, {} as never);
       expect(audited.content[0]).toMatchObject({ type: "text", text: expect.stringContaining("issues") });
     } finally {
       store.close();

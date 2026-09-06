@@ -1,5 +1,4 @@
-import { type CustomTool } from "@gajae-code/coding-agent";
-import { Type } from "@gajae-code/coding-agent/extensibility/typebox";
+import { type CustomTool, Type } from "./tool-types.ts";
 
 import {
   DEFAULT_CHILD_STATUS_LIST_LIMIT,
@@ -34,8 +33,6 @@ export function createChildNudgeTool(options: ChildNudgeToolOptions): CustomTool
   return {
     name: "child_nudge",
     label: "Nudge Background Task",
-    strict: true,
-    concurrency: "shared",
     description: "Steer a running background task, wake an idle task, or release a finished task. This only updates lifecycle state and never waits for task work.",
     parameters: Type.Object({
       childId: Type.String({ minLength: 1, maxLength: 64 }),
@@ -74,9 +71,7 @@ export function createChildStatusTool(options: ChildStatusToolOptions): CustomTo
   return {
     name: "child_status",
     label: "Background Task Status",
-    strict: true,
-    concurrency: "shared",
-    description: "Read precomputed background-task status. This never contacts SQLite at invocation time or a child SDK session.",
+    description: "Read precomputed background-task status. This never contacts SQLite at invocation time or a child engine session.",
     parameters: Type.Object({
       childId: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })),
     }, { additionalProperties: false }),

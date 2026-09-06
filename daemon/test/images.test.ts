@@ -13,7 +13,7 @@ import type {
   MainAgentSession,
   MainSessionFactory,
   PromptImage,
-} from "../src/sdk-session/main-session.ts";
+} from "../src/omo-session/main-session.ts";
 import { bindChatCursor } from "../src/imessage/reader.ts";
 import { openStateStore } from "../src/store/index.ts";
 

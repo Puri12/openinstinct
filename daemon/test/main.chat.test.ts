@@ -18,7 +18,7 @@ import {
   type MainSessionFactory,
   type MainSessionFactoryInput,
   type PromptImage,
-} from "../src/sdk-session/main-session.ts";
+} from "../src/omo-session/main-session.ts";
 import { openStateStore, type StateStore } from "../src/store/index.ts";
 import { PANEL_SOURCE_MARKER } from "../src/chat/hub.ts";
 
@@ -53,7 +53,7 @@ type FakeSessionOptions = {
 };
 
 /**
- * Minimal SDK-shaped fake. It keeps user/assistant rows in the same shape used
+ * Minimal engine-shaped fake. It keeps user/assistant rows in the same shape used
  * by the history reader and emits the pinned agent/message events consumed by
  * MainSession's segment router.
  */
@@ -146,7 +146,7 @@ class FakeMainSession implements MainAgentSession {
     if (this.waitSecondSteerForFirstDelta && steerNumber === 2) {
       await this.continuationFirstDelta.promise;
     }
-    // Let concurrently submitted socket requests enqueue before the SDK's
+    // Let concurrently submitted socket requests enqueue before the omo engine's
     // scheduled continuation microtask opens. MainSession treats resolution as
     // admission; consumption is still represented by message_start below.
     await Promise.resolve();
@@ -826,7 +826,7 @@ describe("WI-19 attached chat lane", () => {
       expect(logEntries(harness.paths)).toContainEqual(expect.objectContaining({ event: "image_read_forwarded", path: imagePath, lane: "attached" }));
 
       const tool = createSendImageTool(() => ({ kind: "queued", deliveryId: "tool-delivery" }));
-      const result = await tool.execute("send-image", { filePath: "/tmp/tool.png", caption: "tool image" }, undefined, {} as never);
+      const result = await tool.execute("send-image", { filePath: "/tmp/tool.png", caption: "tool image" }, undefined, undefined, {} as never);
       expect(result.details).toEqual({ kind: "queued", deliveryId: "tool-delivery" });
       expect(JSON.stringify(result.content)).toContain("Image queued for delivery as tool-delivery");
     } finally {
@@ -923,7 +923,7 @@ describe("WI-19 detached chat lane", () => {
       expect(deliveryRows(harness.runtime)).toHaveLength(0);
       expect(logEntries(harness.paths)).toContainEqual(expect.objectContaining({ event: "delivery_skipped_no_imessage_lane", reason: "detached_at_turn_start" }));
       const tool = createSendImageTool(() => ({ kind: "chat_only" }));
-      const result = await tool.execute("detached-image", { filePath: imagePath, caption: "detached image" }, undefined, {} as never);
+      const result = await tool.execute("detached-image", { filePath: imagePath, caption: "detached image" }, undefined, undefined, {} as never);
       expect(result.details).toEqual({ kind: "chat_only" });
       expect(JSON.stringify(result.content)).toContain("iMessage is not connected");
     } finally {
@@ -1004,7 +1004,7 @@ describe("WI-19 detached chat lane", () => {
       connection = await connectControl(harness.paths.controlSocket);
       const response = await request(connection, "unsafe-notify", "session.notify", { text: "background status" });
       expect(response).toMatchObject({ type: "response", payload: { delivered: false, reply: "timeout" } });
-      expect(harness.runtime.store.getMeta("sdk.main_session.owner_replies")).toBeUndefined();
+      expect(harness.runtime.store.getMeta("omo.main_session.owner_replies")).toBeUndefined();
       const history = payloadOf(await request(connection, "unsafe-history", "chat.history", { limit: 50 }));
       expect((history.messages as Array<Record<string, unknown>>).some((message) => message.text === "timeout")).toBe(false);
     } finally {

@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * The Gajae soul is a versioned Markdown file appended to the inherited gjc
- * system prompt on every SDK session creation. It is read from disk (not
+ * The Gajae soul is a versioned Markdown file appended to the inherited omo
+ * system prompt on every omo engine session creation. It is read from disk (not
  * imported) so an edit followed by `session.reload` takes effect without a
  * daemon restart; the version comment lets the panel/status show what is live.
  */

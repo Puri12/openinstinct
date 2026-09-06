@@ -1,13 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { Compile } from "typebox/compile";
 import { join } from "node:path";
 
 import { StateStoreChildStatusReader } from "../../src/children/status.ts";
 import {
   createChildNudgeTool,
   createChildStatusTool,
-} from "../../src/sdk-session/main-session.ts";
+} from "../../src/omo-session/main-session.ts";
 import { openStateStore, type StateStore } from "../../src/store/index.ts";
 
 const directories: string[] = [];
@@ -60,7 +61,7 @@ describe("child_nudge tool", () => {
     const nudge = await execute(tool as never, { childId: "child-1", op: "nudge", text: "  continue  " });
     const release = await execute(tool as never, { childId: "child-1", op: "release", receipt: true });
 
-    expect((tool.parameters as any).safeParse({ childId: "x", op: "nudge", text: "hi", unexpected: true }).success).toBe(false);
+    expect(Compile(tool.parameters).Check({ childId: "x", op: "nudge", text: "hi", unexpected: true })).toBe(false);
     expect(calls).toEqual(["child-1:continue:false", "child-1:release"]);
     expect(nudge).toEqual({
       content: [{ type: "text", text: "Nudge delivered into the running task child-1." }],
@@ -114,7 +115,7 @@ describe("child_nudge tool", () => {
 });
 
 describe("child_status tool", () => {
-  test("returns a bounded detail and projects terminal state without touching SDK state", async () => {
+  test("returns a bounded detail and projects terminal state without touching engine state", async () => {
     const store = createStore();
     const at = "2026-01-01T00:00:00.000Z";
     createLiveChild(store, "detail-child", at);

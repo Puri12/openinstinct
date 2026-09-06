@@ -22,7 +22,7 @@ import type {
   MainTurnResult,
   SegmentCapture,
   SteerOutcome,
-} from "../src/sdk-session/main-session.ts";
+} from "../src/omo-session/main-session.ts";
 import { openStateStore, type StateStore } from "../src/store/index.ts";
 
 const OWNER_HANDLE = "+821012345678";

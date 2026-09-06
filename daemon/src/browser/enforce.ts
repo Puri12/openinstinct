@@ -1,24 +1,30 @@
-import type { ExtensionFactory } from "@gajae-code/coding-agent";
+import type { ExtensionFactory } from "@code-yeongyu/senpi";
+
+import { BROWSER_MCP_SERVER, browserMcpDeclaration } from "./chrome.ts";
 
 /**
- * Hard rule, not a prompt: every `browser` tool call must run on Gajae's own
- * persistent Chrome profile. The extension hook cannot rewrite inputs, so a
- * bare or mis-targeted call is blocked with the exact `app` block to pass;
- * the model retries correctly on the next step. Nothing ever reaches the
- * owner's personal Chrome profile or a throwaway temp profile.
+ * Hard rules, not prompts. The browser surface is pinned structurally: the
+ * agent has no browser tool of its own, only `chrome-devtools-mcp` attached to
+ * the daemon-owned Chrome on our profile, registered here. What is left to
+ * enforce at call time is everything the engine would otherwise allow: its own
+ * spawners, an unbounded tool budget, and reads of our state and other agents'
+ * homes.
  */
 /** Main session only: bash must not block the owner's chat. */
 const MAIN_BASH_MAX_TIMEOUT_S = 20;
 
+/** Engine spawners that bypass OpenInstinct's child lifecycle (concurrency cap, receipts, journal, panel visibility, model pin, this very enforcer). */
+const BLOCKED_SPAWNERS = ["task", "subagent", "job", "eval", "workflow", "team_create", "schedule_wakeup"];
+
 export function checkMainBashInput(input: Record<string, unknown>): string | undefined {
-  if (input.async === true) {
+  if (input.run_in_background === true) {
     return undefined;
   }
   const timeout = typeof input.timeout === "number" ? input.timeout : undefined;
   if (timeout !== undefined && timeout <= MAIN_BASH_MAX_TIMEOUT_S) {
     return undefined;
   }
-  return `In the owner chat, bash must either be quick (timeout ≤ ${MAIN_BASH_MAX_TIMEOUT_S}s, set explicitly) or run with async: true. For anything longer or multi-step, use delegate_background and tell the owner it is underway`;
+  return `In the owner chat, bash must either be quick (timeout ≤ ${MAIN_BASH_MAX_TIMEOUT_S}s, set explicitly) or run with run_in_background: true. For anything longer or multi-step, use delegate_background and tell the owner it is underway`;
 }
 
 /**
@@ -31,7 +37,7 @@ export function forbiddenPathReason(target: string, root: string): string | unde
   const banned = [
     [`${root}/children`, "child work/session/journal directories"],
     [`${root}/logs`, "daemon logs"],
-    [`${root}/gjc`, "the SDK state directory (sessions, auth)"],
+    [`${root}/omo`, "the engine state directory (sessions, auth)"],
     [`${root}/state.db`, "the daemon state database"],
     [`${root}/env`, "the credentials file"],
     [`${root}/secrets`, "stored credentials (use them via the service, never read them back)"],
@@ -41,14 +47,22 @@ export function forbiddenPathReason(target: string, root: string): string | unde
       return `Reading ${what} is off-limits: it is enormous and not information for the owner. Use memory_search / the memory directory instead.`;
     }
   }
-  // Other agents' homes on this Mac: their bot tokens, gateways and memory
-  // are not ours. A child once read the gajae-way Discord bot token from
-  // here and started calling the Discord API as that bot.
+  // Other agents' homes on this Mac: the host omo / senpi / pi installs and the
+  // coding-tool sign-ins the daemon may only adopt through Settings, never
+  // read directly. A child once read another agent's Discord bot token from a
+  // sibling home and started calling the Discord API as that bot.
   const home = process.env.HOME ?? "";
-  for (const other of [`${home}/gajaeway-play`, `${home}/.gjc`, `${home}/.gajae-way`]) {
+  const otherAgent = "That directory belongs to another agent running on this Mac (its credentials, gateway and memory). Never read or use it; Discord is only reachable through the browser as the owner.";
+  for (const other of [`${home}/.omo`, `${home}/.senpi`, `${home}/.pi`, `${home}/.codex`, `${home}/.claude`, `${home}/.cursor`]) {
     if (norm === other || norm.startsWith(`${other}/`)) {
-      return "That directory belongs to another agent running on this Mac (its credentials, gateway and memory). Never read or use it; Discord is only reachable through the browser as the owner.";
+      return otherAgent;
     }
+  }
+  // Every omo-family install keeps its engine state at ~/.<brand>/agent (auth.json,
+  // sessions, models.json), whatever the brand is called; the daemon's own copy is
+  // ~/.openinstinct/omo, which the list above already covers.
+  if (home.length > 0 && new RegExp(`^${escapeRegExp(home)}/\\.[^/]+/agent(/|$)`).test(norm)) {
+    return otherAgent;
   }
   if (/\.jsonl$/.test(norm) && norm.includes("/sessions/")) {
     return "Session transcripts are off-limits (they are your own history, and huge). Use memory_search instead.";
@@ -64,21 +78,27 @@ export function forbiddenBashReason(command: string): string | undefined {
   return undefined;
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function pathsInBash(command: string): string[] {
   return [...command.matchAll(/(?:^|[\s"'=])(\/[^\s"'|;&<>]+|~\/[^\s"'|;&<>]+)/g)].map((m) => m[1]!.replace(/^~/, process.env.HOME ?? "~"));
 }
 
-export function browserProfileEnforcer(chromeProfile: string, options: { readonly guardBash?: boolean; readonly maxToolCallsPerTurn?: number; readonly forbiddenRoot?: string; readonly tabPrefix?: string } = {}): ExtensionFactory {
+/**
+ * `chromeProfile` is the profile the daemon-owned Chrome already runs on; it is
+ * kept in the signature because callers name the browser this session may drive,
+ * but the pin itself is the MCP server's `--browserUrl`, which no tool call can
+ * redirect.
+ */
+export function browserProfileEnforcer(chromeProfile: string, options: { readonly guardBash?: boolean; readonly maxToolCallsPerTurn?: number; readonly forbiddenRoot?: string; readonly tabPrefix?: string; readonly cdpPort?: number } = {}): ExtensionFactory {
   let turnCalls = 0;
-  const required = `app: {"browser":"chrome","user_data_dir":"${chromeProfile}","background":true,"no_focus":true,"cdp_port":9222}`;
-  const tabHint = options.tabPrefix ? `name "${options.tabPrefix}main"` : `tab "main"`;
   return (pi) => {
+    pi.registerMcpServer(BROWSER_MCP_SERVER, browserMcpDeclaration({ port: options.cdpPort }));
     pi.on("turn_start", () => { turnCalls = 0; });
     pi.on("tool_call", (event) => {
-      // gjc's own subagent spawner bypasses OpenInstinct's child lifecycle
-      // (concurrency cap, receipts, journal, panel visibility, model pin,
-      // this very enforcer). Background work goes through delegate_background.
-      if (event.toolName === "task" || event.toolName === "subagent" || event.toolName === "job") {
+      if (BLOCKED_SPAWNERS.includes(event.toolName)) {
         return { block: true, reason: "That tool is not available here. Background work goes through delegate_background; answer the owner with what you have." };
       }
       if (options.maxToolCallsPerTurn !== undefined) {
@@ -87,8 +107,8 @@ export function browserProfileEnforcer(chromeProfile: string, options: { readonl
           return { block: true, reason: `Tool budget for this reply is spent (${options.maxToolCallsPerTurn} calls). Reply to the owner now with what you have; if more work is needed, hand it to delegate_background.` };
         }
       }
-      if (options.forbiddenRoot) {
-        const input = (event as { readonly input?: Record<string, unknown> }).input ?? {};
+      const input: Record<string, unknown> = event.input;
+      if (options.forbiddenRoot !== undefined) {
         const targets: string[] = event.toolName === "read" && typeof input.path === "string"
           ? [input.path.split(":")[0]!]
           : event.toolName === "bash" && typeof input.command === "string"
@@ -99,62 +119,16 @@ export function browserProfileEnforcer(chromeProfile: string, options: { readonl
           if (why) return { block: true, reason: why };
         }
       }
-      if (event.toolName === "bash") {
-        const command = (event as { readonly input?: Record<string, unknown> }).input?.command;
-        const why = typeof command === "string" ? forbiddenBashReason(command) : undefined;
-        if (why) return { block: true, reason: why };
-      }
-      if (options.guardBash && event.toolName === "bash") {
-        const problem = checkMainBashInput((event as { readonly input?: Record<string, unknown> }).input ?? {});
-        return problem === undefined ? undefined : { block: true, reason: problem };
-      }
-      if (event.toolName !== "browser") {
+      if (event.toolName !== "bash") {
         return undefined;
       }
-      const input = (event as { readonly input?: Record<string, unknown> }).input ?? {};
-      const problem = checkBrowserInput(input, chromeProfile, options.tabPrefix);
-      if (problem === undefined) {
+      const why = typeof input.command === "string" ? forbiddenBashReason(input.command) : undefined;
+      if (why) return { block: true, reason: why };
+      if (options.guardBash !== true) {
         return undefined;
       }
-      return { block: true, reason: `${problem}. Retry the same browser call with exactly ${required} and ${tabHint}.` };
+      const problem = checkMainBashInput(input);
+      return problem === undefined ? undefined : { block: true, reason: problem };
     });
   };
-}
-
-/**
- * Returns a human reason when the call is not pinned to the agent profile, or
- * (when `tabPrefix` is set) when the tab name is outside this session's
- * namespace. The SDK's tab registry is process-wide and keyed by name only, so
- * two concurrent children both calling their tab "threads" would drive the
- * same page; prefixing makes collisions impossible.
- */
-export function checkBrowserInput(input: Record<string, unknown>, chromeProfile: string, tabPrefix?: string): string | undefined {
-  const app = input.app;
-  if (app === null || typeof app !== "object") {
-    return "browser calls must target Gajae's own Chrome profile (app is missing)";
-  }
-  const a = app as Record<string, unknown>;
-  if (a.browser !== "chrome") {
-    return `app.browser must be "chrome" (got ${JSON.stringify(a.browser)})`;
-  }
-  if (typeof a.user_data_dir !== "string" || normalize(a.user_data_dir) !== normalize(chromeProfile)) {
-    return `app.user_data_dir must be ${JSON.stringify(chromeProfile)} (got ${JSON.stringify(a.user_data_dir)})`;
-  }
-  if (typeof a.cdp_url === "string" && a.cdp_url !== "http://127.0.0.1:9222") {
-    return `app.cdp_url must be "http://127.0.0.1:9222" when provided (got ${JSON.stringify(a.cdp_url)})`;
-  }
-  if (a.cdp_port !== 9222) {
-    return `app.cdp_port must be 9222 (got ${JSON.stringify(a.cdp_port)})`;
-  }
-  if (tabPrefix !== undefined) {
-    const name = typeof input.name === "string" ? input.name : "main";
-    if (!name.startsWith(tabPrefix)) {
-      return `tab names in this task must start with "${tabPrefix}" (got ${JSON.stringify(name)}); other tasks share the same browser`;
-    }
-  }
-  return undefined;
-}
-
-function normalize(p: string): string {
-  return p.replace(/\/+$/, "");
 }

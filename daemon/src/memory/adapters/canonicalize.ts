@@ -46,7 +46,7 @@ export interface MemoryCanonicalizerOptions {
 }
 
 /**
- * Coordinates a bounded SDK-child pass. The model promotes facts; this adapter
+ * Coordinates a bounded omo engine child pass. The model promotes facts; this adapter
  * keeps capture input immutable, regenerates navigation, and closes Git work.
  */
 export class MemoryCanonicalizer {

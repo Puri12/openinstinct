@@ -6,7 +6,7 @@ import type {
   ConversationalChildRunner,
 } from "../../src/children/conversation.ts";
 import type { InterimTurnDelivery, InterimTurner } from "../../src/children/interim.ts";
-import type { MainTurnInput, MainTurnResult } from "../../src/sdk-session/main-session.ts";
+import type { MainTurnInput, MainTurnResult } from "../../src/omo-session/main-session.ts";
 
 export class Deferred<T> {
   public readonly promise: Promise<T>;

@@ -25,7 +25,7 @@ import {
   type SendImageOutcome,
   type SteerOutcome,
   visibleTurnFailure,
-} from "./sdk-session/main-session.ts";
+} from "./omo-session/main-session.ts";
 import type { StateStore } from "./store/index.ts";
 import { setNoCredentialHint } from "./control/socket.ts";
 
@@ -93,7 +93,7 @@ const TYPING_KEEP_ALIVE_MS = 45_000;
 /**
  * Shared ingress for owner text from iMessage and the Chat window. The
  * admission map is deliberately separate from the currently running context:
- * SDK steering can be admitted before the SDK tells us which run consumed it.
+ * engine steering can be admitted before the omo engine tells us which run consumed it.
  */
 export class OwnerTurnIngress {
   private readonly admissions = new Map<string, Admission>();
@@ -127,7 +127,7 @@ export class OwnerTurnIngress {
   public async admit(request: OwnerTurnRequest, options: { readonly markRead?: boolean } = {}): Promise<AdmitOutcome> {
     if (isDaemonPaused(this.deps.store)) {
       recordSuppressedWhilePaused(this.deps.store, 1);
-      this.deps.logger.write("info", "sdk_session", "owner_turn_suppressed_paused", {
+      this.deps.logger.write("info", "omo_session", "owner_turn_suppressed_paused", {
         turnId: request.turnId,
         source: request.source,
       });
@@ -164,7 +164,7 @@ export class OwnerTurnIngress {
     const turnInput = ownerTurnInput(request);
     const session = lane.session;
 
-    // A queued owner box is the strongest ownership signal: the SDK will add
+    // A queued owner box is the strongest ownership signal: the omo engine will add
     // this row to that box and consume it in the same run later.
     const queued = this.queued;
     let queuedSteerAttempted = false;
@@ -178,7 +178,7 @@ export class OwnerTurnIngress {
     }
 
     // `running` also covers a continuation arm which has not opened a run yet.
-    // The SDK, rather than this wrapper, decides whether the row is consumed by
+    // The omo engine, rather than this wrapper, decides whether the row is consumed by
     // the live run or by its scheduled continuation.
     if (!queuedSteerAttempted && (this.activeContext !== undefined || session.running)) {
       const outcome = await this.trySteer(session, turnInput);
@@ -193,7 +193,7 @@ export class OwnerTurnIngress {
     if (options.markRead !== false) {
       void this.presence.read(request.source, request.turnId).catch(() => undefined);
     }
-    this.deps.logger.write("info", "sdk_session", "turn_started", {
+    this.deps.logger.write("info", "omo_session", "turn_started", {
       turnId: request.turnId,
       source: request.source,
     });
@@ -212,7 +212,7 @@ export class OwnerTurnIngress {
     const primary = ids[0];
     const admission = primary === undefined ? undefined : this.admissions.get(primary);
     if (admission === undefined) {
-      this.deps.logger.write("warn", "sdk_session", "turn_context_missing", {
+      this.deps.logger.write("warn", "omo_session", "turn_context_missing", {
         turnId: primary ?? active.turnId,
       });
       return;
@@ -250,7 +250,7 @@ export class OwnerTurnIngress {
   public onTurnPromoted(active: ActiveTurn, turnId: string): void {
     const admission = this.admissions.get(turnId);
     if (admission === undefined) {
-      this.deps.logger.write("warn", "sdk_session", "turn_context_missing", { turnId });
+      this.deps.logger.write("warn", "omo_session", "turn_context_missing", { turnId });
       return;
     }
 
@@ -294,15 +294,15 @@ export class OwnerTurnIngress {
         this.onTurnPromoted(active, turnId);
         return;
       }
-      this.deps.logger.write("info", "sdk_session", "steer_merge_unowned", { turnId });
+      this.deps.logger.write("info", "omo_session", "steer_merge_unowned", { turnId });
       return;
     }
 
     if (!this.mergeIntoContext(context, turnId)) {
-      this.deps.logger.write("info", "sdk_session", "steer_merge_unowned", { turnId });
+      this.deps.logger.write("info", "omo_session", "steer_merge_unowned", { turnId });
       return;
     }
-    this.deps.logger.write("info", "sdk_session", "turn_steer_merged", {
+    this.deps.logger.write("info", "omo_session", "turn_steer_merged", {
       turnId: context.turnId,
       steered: turnId,
     });
@@ -474,7 +474,7 @@ export class OwnerTurnIngress {
       }
 
       if (context.steered.length > 0) {
-        this.deps.logger.write("info", "sdk_session", "turn_merged_steers", {
+        this.deps.logger.write("info", "omo_session", "turn_merged_steers", {
           turnId: context.turnId,
           steered: [...context.steered],
         });
@@ -491,7 +491,7 @@ export class OwnerTurnIngress {
       }
 
       if (result.kind === "failed" && this.consecutiveTurnFailures > MAX_CONSECUTIVE_FAILURE_NOTICES) {
-        this.deps.logger.write("error", "sdk_session", "turn_failure_notice_suppressed", {
+        this.deps.logger.write("error", "omo_session", "turn_failure_notice_suppressed", {
           turnId: context.turnId,
           code: result.code,
           consecutiveTurnFailures: this.consecutiveTurnFailures,
@@ -540,7 +540,7 @@ export class OwnerTurnIngress {
       }
 
       if (text.length === 0) {
-        this.deps.logger.write("info", "sdk_session", "turn_finished", {
+        this.deps.logger.write("info", "omo_session", "turn_finished", {
           turnId: context.turnId,
           durationMs: Date.now() - startedAt,
           segmentsOnly: true,
@@ -549,7 +549,7 @@ export class OwnerTurnIngress {
         return;
       }
 
-      this.deps.logger.write(result.kind === "reply" ? "info" : "warn", "sdk_session", "turn_finished", {
+      this.deps.logger.write(result.kind === "reply" ? "info" : "warn", "omo_session", "turn_finished", {
         turnId: context.turnId,
         durationMs: Date.now() - startedAt,
         ...(result.kind === "reply"
@@ -557,7 +557,7 @@ export class OwnerTurnIngress {
           : { code: result.code }),
       });
       if (result.kind === "failed" && result.code === "watchdog_timeout") {
-        this.deps.logger.write("warn", "sdk_session", "watchdog_timeout", {
+        this.deps.logger.write("warn", "omo_session", "watchdog_timeout", {
           turnId: context.turnId,
           durationMs: Date.now() - startedAt,
         });

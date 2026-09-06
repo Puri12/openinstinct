@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync } from "node:fs";
-import { dataPaths } from "../../paths.ts";
-import { dirname, join } from "node:path";
+import { existsSync, mkdirSync, statSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { ChildRunRequest, ChildRunResult, ChildRunner, ChildTerminalState } from "../runner.ts";
@@ -9,30 +9,36 @@ import type { ChildRunRequest, ChildRunResult, ChildRunner, ChildTerminalState }
 const DEFAULT_KILL_GRACE_MS = 1_000;
 const DEFAULT_MAX_OUTPUT_BYTES = 1_048_576;
 
-export interface GjcExternalRunnerOptions {
+export interface OmoExternalRunnerOptions {
   readonly root: string;
-  /** Defaults to the system gjc from PATH, then the vendored binary. Tests inject a hermetic fixture. */
-  readonly gjcPath?: string;
+  /** Defaults to OI_OMO_CLI, then the vendored senpi CLI. Tests inject a hermetic fixture. */
+  readonly cliPath?: string;
+  /** Runtime that executes the CLI bundle; defaults to the daemon's own bun. */
+  readonly runtimePath?: string;
   readonly env?: NodeJS.ProcessEnv;
   /** Model every external child runs on; the same value as the main session. */
   readonly modelPattern?: string;
+  /** Engine agent dir (auth.json, models.json); never the host's ~/.senpi. */
+  readonly agentDir?: string;
   readonly killGraceMs?: number;
   readonly maxOutputBytes?: number;
 }
 
 /**
- * Runs a separate non-interactive GJC process. `--mode json` is supported by
- * GJC 0.15.6 (`gjc -p --mode json`); the adapter consumes only JSON stdout and
- * maps its terminal payload into the process-neutral ChildRunner result.
+ * Runs a separate non-interactive omo engine (senpi CLI) process in `-p --mode
+ * json` mode; the adapter consumes only JSON stdout and maps its terminal
+ * payload into the process-neutral ChildRunner result.
  */
-export class GjcExternalRunner implements ChildRunner {
-  public readonly name = "gjc-external";
-  private readonly gjcPath: string;
+export class OmoExternalRunner implements ChildRunner {
+  public readonly name = "omo-external";
+  private readonly cliPath: string;
+  private readonly agentDir: string;
   private readonly killGraceMs: number;
   private readonly maxOutputBytes: number;
 
-  public constructor(private readonly options: GjcExternalRunnerOptions) {
-    this.gjcPath = options.gjcPath ?? process.env.GJC_BIN ?? bundledGjcPath();
+  public constructor(private readonly options: OmoExternalRunnerOptions) {
+    this.cliPath = options.cliPath ?? defaultCliPath();
+    this.agentDir = options.agentDir ?? join(homedir(), ".openinstinct", "omo");
     this.killGraceMs = positiveDuration(options.killGraceMs ?? DEFAULT_KILL_GRACE_MS, "killGraceMs");
     this.maxOutputBytes = positiveDuration(options.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES, "maxOutputBytes");
   }
@@ -47,31 +53,45 @@ export class GjcExternalRunner implements ChildRunner {
     mkdirSync(workingDirectory, { recursive: true, mode: 0o700 });
     mkdirSync(sessionDirectory, { recursive: true, mode: 0o700 });
 
+    const flags = [
+      "-p",
+      "--mode", "json",
+      "--no-extensions",
+      "--no-skills",
+      "--no-prompt-templates",
+      "--no-themes",
+      "--no-context-files",
+      "--session-dir", sessionDirectory,
+      ...(this.options.modelPattern ? ["--model", this.options.modelPattern] : []),
+      request.prompt,
+    ];
+    // The vendored engine ships as a plain `dist/cli.js` bundle and needs the
+    // daemon's own runtime in front of it; an executable script (the hermetic
+    // test fixture) carries its own interpreter.
+    const runsItself = isExecutableScript(this.cliPath);
+
     let child: ReturnType<typeof spawn> | undefined;
     try {
-      child = spawn(this.gjcPath, [
-        "-p",
-        "--mode", "json",
-        "--no-lsp",
-        "--no-mcp",
-        "--no-pty",
-        "--no-title",
-        "--session-dir", sessionDirectory,
-        ...(this.options.modelPattern ? ["--model", this.options.modelPattern] : []),
-        request.prompt,
-      ], {
-        cwd: workingDirectory,
-        // Vendored gjc is a `#!/usr/bin/env bun` shim; make sure a bun resolves
-        // even under launchd's PATH by exposing our own runtime dir first.
-        env: this.options.env ?? withRuntimeOnPath(process.env),
-        detached: process.platform !== "win32",
-        stdio: ["ignore", "pipe", "pipe"],
-      });
+      child = spawn(
+        runsItself ? this.cliPath : this.options.runtimePath ?? process.execPath,
+        runsItself ? flags : [this.cliPath, ...flags],
+        {
+          cwd: workingDirectory,
+          env: {
+            ...(this.options.env ?? process.env),
+            SENPI_CODING_AGENT_DIR: this.agentDir,
+            OMO_CODING_AGENT_DIR: this.agentDir,
+            PI_CODING_AGENT_DIR: this.agentDir,
+          },
+          detached: process.platform !== "win32",
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      );
     } catch (error) {
       return failedResult("external_spawn_failed", messageOf(error));
     }
     if (!child || !child.stdout || !child.stderr) {
-      return failedResult("external_stdio", "External GJC did not expose piped stdout and stderr.");
+      return failedResult("external_stdio", "External omo engine did not expose piped stdout and stderr.");
     }
     const stdoutStream = child.stdout;
     const stderrStream = child.stderr;
@@ -204,7 +224,7 @@ function killProcessGroup(
 function parseExternalTerminal(stdout: string): ChildRunResult {
   const records = parseJsonRecords(stdout);
   if (records.length === 0) {
-    throw new Error("external GJC emitted no JSON result");
+    throw new Error("external omo engine emitted no JSON result");
   }
 
   const terminal = records.map(findTerminalRecord).find((record) => record !== undefined);
@@ -249,7 +269,7 @@ function parseJsonRecords(stdout: string): unknown[] {
       try {
         records.push(JSON.parse(line));
       } catch {
-        throw new Error("external GJC stdout was not JSON");
+        throw new Error("external omo engine stdout was not JSON");
       }
     }
     return records;
@@ -406,27 +426,23 @@ function truncate(value: string, maximumCharacters: number): string {
   return Array.from(value).slice(0, maximumCharacters).join("");
 }
 
-function withRuntimeOnPath(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  const runtimeDir = dirname(process.execPath);
-  const current = env.PATH ?? "";
-  if (current.split(":").includes(runtimeDir)) {
-    return env;
+function isExecutableScript(path: string): boolean {
+  if (path.endsWith(".js")) {
+    return false;
   }
-  return { ...env, PATH: current.length === 0 ? runtimeDir : `${runtimeDir}:${current}` };
+  const stats = statSync(path, { throwIfNoEntry: false });
+  return stats !== undefined && (stats.mode & 0o111) !== 0;
 }
 
-function bundledGjcPath(): string {
-  // Only the binary OpenInstinct installed (version-locked to the vendored
-  // SDK). Falling back to a host gjc reintroduces schema drift.
-  const owned = dataPaths().gjcBinary;
-  if (existsSync(owned)) {
-    return owned;
+function defaultCliPath(): string {
+  // Only the CLI OpenInstinct vendored (version-locked to the engine the daemon
+  // links in-process). Falling back to a host install reintroduces schema drift.
+  const candidate = process.env.OI_OMO_CLI
+    ?? fileURLToPath(new URL("../../../node_modules/@code-yeongyu/senpi/dist/cli.js", import.meta.url));
+  if (!existsSync(candidate)) {
+    throw new Error(`omo engine CLI missing at ${candidate}; re-run the installer`);
   }
-  const vendored = fileURLToPath(new URL("../../../node_modules/.bin/gjc", import.meta.url));
-  if (existsSync(vendored)) {
-    return vendored;
-  }
-  throw new Error(`gjc binary missing at ${owned}; re-run the installer`);
+  return candidate;
 }
 
 function messageOf(error: unknown): string {

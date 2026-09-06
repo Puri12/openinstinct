@@ -6,7 +6,7 @@ import { join } from "node:path";
 import type { BootstrapProbes } from "../src/bootstrap/states.ts";
 import { startDaemon } from "../src/main.ts";
 import { dataPaths } from "../src/paths.ts";
-import type { MainSessionFactory } from "../src/sdk-session/main-session.ts";
+import type { MainSessionFactory } from "../src/omo-session/main-session.ts";
 import { requestControl } from "../../scripts/lib/control-client.ts";
 
 const directories: string[] = [];

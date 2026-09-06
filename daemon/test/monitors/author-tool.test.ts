@@ -46,7 +46,7 @@ describe("monitor_author", () => {
     }
   });
 
-  test("rejects malformed cron before persistence and exposes the SDK custom tool shape", async () => {
+  test("rejects malformed cron before persistence and exposes the omo engine custom tool shape", async () => {
     const { store, monitors } = createStore();
     try {
       const tool = createMonitorAuthorTool(monitors);
@@ -72,7 +72,7 @@ describe("monitor_author", () => {
         name: "Webhook",
         trigger: { kind: "webhook" },
         instruction: "Report payload.",
-      } as never, undefined, {} as never);
+      } as never, undefined, undefined, {} as never);
       expect(result.content).toEqual([expect.objectContaining({
         type: "text",
         text: expect.stringContaining("Schedule: webhook /hook/"),

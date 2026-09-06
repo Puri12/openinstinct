@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # Installs from an extracted release archive (see scripts/build-release.sh).
-# No Homebrew, no prerequisites: the bun runtime, the prebuilt panel, the
-# presence helper, and the pinned gjc all ship inside the payload.
+# No Homebrew, no prerequisites: the bun runtime, the prebuilt panel, and the
+# presence helper all ship inside the payload.
 set -eu
 payload=${1:?payload dir}
 home_dir=${HOME:?}
@@ -17,8 +17,6 @@ mv -f "$state_home/bin/bun-runtime.new" "$state_home/bin/bun-runtime"
 ln -sf "$state_home/bin/bun-runtime" "$state_home/bin/bun"
 PATH="$state_home/bin:$PATH"; export PATH
 [ "$(command -v bun)" = "$state_home/bin/bun" ] || { echo "error: bundled bun did not take precedence on PATH" >&2; exit 1; }
-
-# gjc is installed by install.sh from the payload (pinned to the SDK version).
 
 # Stage a source tree at a stable path (install.sh copies from a repo root).
 src="$state_home/src"
@@ -37,4 +35,4 @@ if [ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ] && ! gr
   printf 'PUPPETEER_EXECUTABLE_PATH=/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\n' >> "$env_file"
 fi
 
-OI_SKIP_PANEL_BUILD=1 OI_BUN="$state_home/bin/bun-runtime" OI_GJC_PAYLOAD="$payload/gjc" sh "$src/scripts/install.sh"
+OI_SKIP_PANEL_BUILD=1 OI_BUN="$state_home/bin/bun-runtime" sh "$src/scripts/install.sh"

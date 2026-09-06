@@ -1,5 +1,4 @@
-import type { CustomTool } from "@gajae-code/coding-agent";
-import { Type } from "@gajae-code/coding-agent/extensibility/typebox";
+import { type CustomTool, Type } from "../omo-session/tool-types.ts";
 
 import { memoryAudit } from "./adapters/audit.ts";
 import { MemoryClosureQueue } from "./adapters/intents.ts";
@@ -9,8 +8,6 @@ export function createMemorySearchTool(closure: MemoryClosureQueue): CustomTool 
   return {
     name: "memory_search",
     label: "Memory Search",
-    strict: true,
-    concurrency: "shared",
     description: "Search canonical OpenInstinct memory with BM25 ranking. Returns bounded excerpts, paths, and scores.",
     parameters: Type.Object({
       query: Type.String({ minLength: 1, maxLength: 1_000 }),
@@ -35,8 +32,6 @@ export function createMemoryCaptureTool(closure: MemoryClosureQueue): CustomTool
   return {
     name: "memory_capture",
     label: "Memory Capture",
-    strict: true,
-    concurrency: "shared",
     description: "Durably queue an explicit owner note for the UTC daily memory capture. Returns after StateStore intent admission, not after Git closure.",
     parameters: Type.Object({
       note: Type.String({ minLength: 1, maxLength: 12_000 }),
@@ -61,8 +56,6 @@ export function createMemoryAuditTool(closure: MemoryClosureQueue): CustomTool {
   return {
     name: "memory_audit",
     label: "Memory Audit",
-    strict: true,
-    concurrency: "shared",
     description: "Run the read-only structural memory audit. It never repairs or initializes the corpus.",
     parameters: Type.Object({}, { additionalProperties: false }),
     async execute() {

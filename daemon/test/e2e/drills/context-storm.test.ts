@@ -11,7 +11,7 @@ import {
   MainSession,
   type MainAgentSession,
   type MainSessionFactory,
-} from "../../../src/sdk-session/main-session.ts";
+} from "../../../src/omo-session/main-session.ts";
 import { openStateStore, type StateStore } from "../../../src/store/index.ts";
 
 const directories: string[] = [];
@@ -213,7 +213,7 @@ describe("context-storm drill", () => {
       expect(sessions).toHaveLength(2);
       expect(sessions[0]!.prompts).toEqual(["before reload"]);
       expect(sessions[1]!.prompts).toEqual(["after reload"]);
-      expect(store.getMeta("sdk.main_session.id")).toBe(sessions[1]!.sessionId);
+      expect(store.getMeta("omo.main_session.id")).toBe(sessions[1]!.sessionId);
     } finally {
       await main.stop();
       store.close();

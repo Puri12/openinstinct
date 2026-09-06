@@ -8,7 +8,7 @@ import type { BootstrapProbes } from "../src/bootstrap/states.ts";
 import type { DeliveryPort, DeliveryReceipt } from "../src/delivery/port.ts";
 import { startDaemon } from "../src/main.ts";
 import { dataPaths } from "../src/paths.ts";
-import type { MainAgentSession, MainSessionFactory } from "../src/sdk-session/main-session.ts";
+import type { MainAgentSession, MainSessionFactory } from "../src/omo-session/main-session.ts";
 import { openStateStore } from "../src/store/index.ts";
 import { requestControl } from "../../scripts/lib/control-client.ts";
 

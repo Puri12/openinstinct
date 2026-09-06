@@ -1,30 +1,40 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
-import { AuthStorage } from "@gajae-code/coding-agent/session/auth-storage";
-import type { CredentialDiscoveryResult, ImportableCredential } from "@gajae-code/coding-agent/setup/credential-import";
-import { adoptCredential, discoverCredentials, toDiscovered } from "../src/settings/credential-adopt.ts";
+import {
+  adoptCredential,
+  discoverCredentials,
+  discoverLocalCredentials,
+  toDiscovered,
+} from "../src/settings/credential-adopt.ts";
+
+const EXPIRED_AT = Date.now() - 60_000;
+const VALID_AT = Date.now() + 3_600_000;
+const XAI_KEY = "xai-key-0123456789abcdef";
+const CODEX_ACCESS = "codex-access-0123456789";
+const CLAUDE_ACCESS = "claude-access-0123456789";
 
 const directories: string[] = [];
 
-function oauthCredential(overrides: Partial<ImportableCredential> = {}): ImportableCredential {
-  const expiresAt = Date.now() + 60_000;
-  return {
-    provider: "anthropic",
-    origin: "claude-code-file",
-    source: "Claude Code (~/.claude/.credentials.json)",
-    kind: "oauth",
-    expiresAt,
-    redactedToken: "sk-ant-…1234",
-    credential: { type: "oauth", access: "access-secret", refresh: "refresh-secret", expires: expiresAt },
-    ...overrides,
-  };
+function writeJson(path: string, value: unknown): void {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify(value, null, 2));
 }
 
-function result(importable: ImportableCredential[], environment: CredentialDiscoveryResult["environment"] = []): CredentialDiscoveryResult {
-  return { importable, environment, skipped: [] };
+/** A temp HOME holding all three credential sources: an api key, a live OAuth, an expired OAuth. */
+function seedHome(): string {
+  const home = mkdtempSync(join(tmpdir(), "openinstinct-credential-adopt-"));
+  directories.push(home);
+  writeJson(join(home, ".omo", "agent", "auth.json"), { xai: { type: "api_key", key: XAI_KEY } });
+  writeJson(join(home, ".codex", "auth.json"), {
+    tokens: { access_token: CODEX_ACCESS, refresh_token: "codex-refresh", account_id: "acct_123", expires_at: VALID_AT },
+  });
+  writeJson(join(home, ".claude", ".credentials.json"), {
+    claudeAiOauth: { accessToken: CLAUDE_ACCESS, refreshToken: "claude-refresh", expiresAt: EXPIRED_AT },
+  });
+  return home;
 }
 
 afterEach(() => {
@@ -33,110 +43,156 @@ afterEach(() => {
   }
 });
 
-describe("credential adoption", () => {
-  test("maps a live OAuth credential to an adoptable redacted record", () => {
-    const discovered = toDiscovered(oauthCredential({ identity: { email: "owner@example.com" } }));
-    expect(discovered).toEqual({
+describe("credential discovery", () => {
+  test("lists every local source, adoptable first then by label", async () => {
+    const home = seedHome();
+
+    const credentials = await discoverCredentials(() => discoverLocalCredentials(home));
+
+    expect(credentials.map(({ id, label, adoptable }) => ({ id, label, adoptable }))).toEqual([
+      { id: "openai-codex:codex-file", label: "Codex (ChatGPT)", adoptable: true },
+      { id: "xai:omo-auth-json", label: "xAI", adoptable: true },
+      { id: "anthropic:claude-code-file", label: "Claude (Anthropic)", adoptable: false },
+    ]);
+  });
+
+  test("marks the expired Claude Code login non-adoptable with the contract reason", async () => {
+    const home = seedHome();
+
+    const credentials = await discoverCredentials(() => discoverLocalCredentials(home));
+
+    expect(credentials.find(({ id }) => id === "anthropic:claude-code-file")).toEqual({
       id: "anthropic:claude-code-file",
       provider: "anthropic",
       label: "Claude (Anthropic)",
       source: "Claude Code (~/.claude/.credentials.json)",
       kind: "oauth",
-      redactedToken: "sk-ant-…1234",
-      identity: "owner@example.com",
-      expiresAt: expect.any(String),
-      adoptable: true,
+      redactedToken: "claude…6789",
+      expiresAt: new Date(EXPIRED_AT).toISOString(),
+      adoptable: false,
+      reason: "This login has expired. Sign in to that tool again, or sign in here separately.",
     });
-    expect(discovered.reason).toBeUndefined();
   });
 
-  test("maps an expired OAuth credential to a non-adoptable record with the contract reason", () => {
-    const discovered = toDiscovered(oauthCredential({ expiresAt: Date.now() - 1_000 }));
-    expect(discovered.adoptable).toBe(false);
-    expect(discovered.reason).toBe("This login has expired. Sign in to Claude Code again, or sign in here separately.");
-  });
+  test("carries the Codex account id as the identity of a live OAuth login", async () => {
+    const home = seedHome();
 
-  test("maps an API-key credential to an adoptable record", () => {
-    const discovered = toDiscovered({
-      provider: "openai-codex",
-      origin: "codex-file",
-      source: "Codex CLI (~/.codex/auth.json)",
-      kind: "api_key",
-      redactedToken: "sk-…abcd",
-      credential: { type: "api_key", key: "api-key-secret" },
-    });
-    expect(discovered).toEqual({
+    const credentials = await discoverCredentials(() => discoverLocalCredentials(home));
+
+    expect(credentials.find(({ id }) => id === "openai-codex:codex-file")).toEqual({
       id: "openai-codex:codex-file",
       provider: "openai-codex",
       label: "Codex (ChatGPT)",
       source: "Codex CLI (~/.codex/auth.json)",
-      kind: "api_key",
-      redactedToken: "sk-…abcd",
+      kind: "oauth",
+      redactedToken: "codex-…6789",
+      identity: "acct_123",
+      expiresAt: new Date(VALID_AT).toISOString(),
       adoptable: true,
     });
-    expect(discovered.reason).toBeUndefined();
   });
 
-  test("drops importable credentials whose provider is already active in the environment", async () => {
-    const candidates = await discoverCredentials(async () => result([
-      oauthCredential(),
-      {
-        provider: "openai-codex",
-        origin: "codex-file",
-        source: "Codex CLI (~/.codex/auth.json)",
-        kind: "api_key",
-        redactedToken: "sk-…abcd",
-        credential: { type: "api_key", key: "api-key-secret" },
-      },
-    ], [{ provider: "openai-codex", variable: "OPENAI_API_KEY", redactedValue: "sk-…efgh" }]));
-    expect(candidates.map(({ id }) => id)).toEqual(["anthropic:claude-code-file"]);
-  });
+  test("never exposes a raw secret in a discovery summary", async () => {
+    const home = seedHome();
 
-  test("adopts a discovered credential into the requested auth database", async () => {
-    const directory = mkdtempSync(join(tmpdir(), "openinstinct-credential-adopt-"));
-    directories.push(directory);
-    const dbPath = join(directory, "agent.db");
-    const credential: ImportableCredential = {
-      provider: "openai-codex",
-      origin: "codex-file",
-      source: "Codex CLI (~/.codex/auth.json)",
-      kind: "api_key",
-      redactedToken: "sk-…abcd",
-      credential: { type: "api_key", key: "api-key-secret" },
-    };
+    const credentials = await discoverCredentials(() => discoverLocalCredentials(home));
 
-    await expect(adoptCredential("openai-codex:codex-file", {
-      discover: async () => result([credential]),
-      dbPath,
-    })).resolves.toEqual({ provider: "openai-codex" });
-
-    const storage = await AuthStorage.create(dbPath);
-    try {
-      expect(storage.has("openai-codex")).toBe(true);
-      expect(storage.getAll()["openai-codex"]).toEqual({ type: "api_key", key: "api-key-secret" });
-    } finally {
-      storage.close();
+    const serialized = JSON.stringify(credentials);
+    for (const secret of [XAI_KEY, CODEX_ACCESS, CLAUDE_ACCESS, "codex-refresh", "claude-refresh"]) {
+      expect(serialized).not.toContain(secret);
     }
   });
 
-  test("rejects an unknown credential id", async () => {
-    await expect(adoptCredential("anthropic:claude-code-keychain", {
-      discover: async () => result([]),
-    })).rejects.toThrow("no such credential: anthropic:claude-code-keychain");
+  test("maps a Codex file holding only an API key to the openai provider", async () => {
+    const home = mkdtempSync(join(tmpdir(), "openinstinct-credential-adopt-"));
+    directories.push(home);
+    writeJson(join(home, ".codex", "auth.json"), { OPENAI_API_KEY: "sk-openai-0123456789" });
+
+    const credentials = await discoverCredentials(() => discoverLocalCredentials(home));
+
+    expect(credentials).toEqual([{
+      id: "openai:codex-file",
+      provider: "openai",
+      label: "OpenAI",
+      source: "Codex CLI (~/.codex/auth.json)",
+      kind: "api_key",
+      redactedToken: "sk-ope…6789",
+      adoptable: true,
+    }]);
   });
 
-  test("refuses a discovered but expired credential distinctly from an unknown id", async () => {
-    const expired: ImportableCredential = {
-      provider: "anthropic",
-      origin: "claude-code-keychain",
-      source: "Claude Code (macOS Keychain)",
-      kind: "oauth",
-      expiresAt: Date.now() - 60_000,
-      redactedToken: "sk-a…5gAA",
-      credential: { type: "oauth", access: "expired-secret", refresh: "r", expires: Date.now() - 60_000 } as ImportableCredential["credential"],
-    };
+  test("skips unreadable and malformed sources instead of failing discovery", async () => {
+    const home = mkdtempSync(join(tmpdir(), "openinstinct-credential-adopt-"));
+    directories.push(home);
+    mkdirSync(join(home, ".codex", "auth.json"), { recursive: true });
+    mkdirSync(join(home, ".claude"), { recursive: true });
+    writeFileSync(join(home, ".claude", ".credentials.json"), "{ not json");
+    writeJson(join(home, ".omo", "agent", "auth.json"), { broken: { type: "oauth", access: "a" } });
+
+    await expect(discoverCredentials(() => discoverLocalCredentials(home))).resolves.toEqual([]);
+  });
+
+  test("falls back to the provider id when no label is known", () => {
+    const discovered = toDiscovered({
+      provider: "some-new-provider",
+      origin: "omo-auth-json",
+      source: "omo (~/.omo/agent/auth.json)",
+      kind: "api_key",
+      credential: { type: "api_key", key: "key-0123456789" },
+    });
+
+    expect(discovered.label).toBe("some-new-provider");
+  });
+});
+
+describe("credential adoption", () => {
+  test("writes the exact credential into a private auth.json", async () => {
+    const home = seedHome();
+    const authPath = join(home, "state", "auth.json");
+
+    await expect(adoptCredential("xai:omo-auth-json", {
+      discover: () => discoverLocalCredentials(home),
+      authPath,
+    })).resolves.toEqual({ provider: "xai" });
+
+    expect(JSON.parse(readFileSync(authPath, "utf8"))).toEqual({ xai: { type: "api_key", key: XAI_KEY } });
+    expect(statSync(authPath).mode & 0o777).toBe(0o600);
+  });
+
+  test("merges into an existing auth map without dropping other providers", async () => {
+    const home = seedHome();
+    const authPath = join(home, "state", "auth.json");
+    writeJson(authPath, { openrouter: { type: "api_key", key: "existing-key" } });
+
+    await expect(adoptCredential("openai-codex:codex-file", {
+      discover: () => discoverLocalCredentials(home),
+      authPath,
+    })).resolves.toEqual({ provider: "openai-codex" });
+
+    expect(JSON.parse(readFileSync(authPath, "utf8"))).toEqual({
+      openrouter: { type: "api_key", key: "existing-key" },
+      "openai-codex": { type: "oauth", access: CODEX_ACCESS, refresh: "codex-refresh", expires: VALID_AT, accountId: "acct_123" },
+    });
+  });
+
+  test("refuses an expired login and stores nothing", async () => {
+    const home = seedHome();
+    const authPath = join(home, "state", "auth.json");
+
+    await expect(adoptCredential("anthropic:claude-code-file", {
+      discover: () => discoverLocalCredentials(home),
+      authPath,
+    })).rejects.toThrow("credential cannot be used: This login has expired. Sign in to that tool again, or sign in here separately.");
+
+    expect(existsSync(authPath)).toBe(false);
+  });
+
+  test("rejects an unknown credential id", async () => {
+    const home = seedHome();
+
     await expect(adoptCredential("anthropic:claude-code-keychain", {
-      discover: async () => result([expired]),
-    })).rejects.toThrow(/^credential cannot be used: /);
+      discover: () => discoverLocalCredentials(home),
+      authPath: join(home, "state", "auth.json"),
+    })).rejects.toThrow("no such credential: anthropic:claude-code-keychain");
   });
 });

@@ -12,7 +12,7 @@ import { bindChatCursor } from "../src/imessage/reader.ts";
 import { openStateStore } from "../src/store/index.ts";
 
 import { dataPaths } from "../src/paths.ts";
-import type { MainAgentSession, MainSessionFactory } from "../src/sdk-session/main-session.ts";
+import type { MainAgentSession, MainSessionFactory } from "../src/omo-session/main-session.ts";
 
 const directories: string[] = [];
 

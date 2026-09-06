@@ -1,11 +1,11 @@
 import { join } from "node:path";
 
 import {
-  SdkInProcessRunner,
+  OmoInProcessRunner,
   type ChildAgentSession,
   type ChildSessionFactory,
-} from "../../src/children/runners/sdk-inprocess.ts";
-import { GjcExternalRunner } from "../../src/children/runners/gjc-external.ts";
+} from "../../src/children/runners/omo-inprocess.ts";
+import { OmoExternalRunner } from "../../src/children/runners/omo-external.ts";
 import { registerRunnerContract } from "./runner-contract.ts";
 
 class ContractSession implements ChildAgentSession {
@@ -46,15 +46,15 @@ const sessionFactory: ChildSessionFactory = {
 };
 
 registerRunnerContract({
-  name: "SdkInProcessRunner",
-  create: (root) => new SdkInProcessRunner({ root, factory: sessionFactory }),
+  name: "OmoInProcessRunner",
+  create: (root) => new OmoInProcessRunner({ root, factory: sessionFactory }),
 });
 
 registerRunnerContract({
-  name: "GjcExternalRunner",
-  create: (root) => new GjcExternalRunner({
+  name: "OmoExternalRunner",
+  create: (root) => new OmoExternalRunner({
     root,
-    gjcPath: join(import.meta.dir, "../fixtures/children/gjc-stub.sh"),
+    cliPath: join(import.meta.dir, "../fixtures/children/omo-stub.sh"),
     killGraceMs: 100,
     env: { ...process.env, HOME: root },
   }),

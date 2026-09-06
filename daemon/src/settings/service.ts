@@ -1,10 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
-import { dirname, join } from "node:path";
+import type { AgentSessionServices } from "@code-yeongyu/senpi";
 
 import { normalizeHandle } from "../imessage/allowlist.ts";
 import { loadSoul } from "../persona/soul.ts";
 import type { DataPaths } from "../paths.ts";
+import { createOmoServices, ensureOmoAgentDir, omoAgentDir } from "../omo-session/omo-runtime.ts";
 import {
   DEFAULT_CHILD_IDLE_TIMEOUT_MS,
   DEFAULT_CHILD_INTERIM_BATCH_MS,
@@ -23,7 +24,7 @@ import {
   readRuntimeConfig,
 } from "../runtime-config.ts";
 import { validateCron } from "../monitors/store.ts";
-import { adoptCredential as adoptExternalCredential, discoverCredentials as discoverExternalCredentials } from "./credential-adopt.ts";
+import { adoptCredential as adoptExternalCredential, discoverCredentials as discoverExternalCredentials, PROVIDER_LABELS } from "./credential-adopt.ts";
 import type { DiscoveredCredential } from "./credential-adopt.ts";
 import { parseEnvFile, writeEnvFile } from "./env.ts";
 
@@ -42,6 +43,9 @@ export const MANAGED_CREDENTIAL_ENV_KEYS: readonly string[] = MANAGED_ENV_KEYS.f
 );
 export const OI_API_KEY_PATTERN = /^OI_[A-Z0-9_]+_API_KEY$/;
 export const MANAGED_OI_API_KEY_PATTERN = OI_API_KEY_PATTERN;
+
+/** Sign-in options the panel surfaces first; everything else the engine knows follows alphabetically. */
+const POPULAR_OAUTH_PROVIDERS: readonly string[] = ["anthropic", "openai-codex", "github-copilot"];
 
 export interface SettingsSnapshot {
   readonly ownerHandle: string;
@@ -107,7 +111,16 @@ export interface AccountRow {
 export interface SettingsServiceOptions {
   readonly paths: DataPaths;
   readonly soulPath: string;
-  readonly gjcBinary?: string;
+}
+
+/** One in-flight OAuth attempt: the engine drives it, the panel supplies the code. */
+interface PendingLogin {
+  readonly provider: string;
+  /** Resolves once the engine has stored the credential. */
+  readonly completion: Promise<void>;
+  readonly abort: AbortController;
+  /** Hands the pasted code to the engine's waiting prompt. */
+  readonly submitCode: (code: string) => void;
 }
 
 /**
@@ -116,10 +129,28 @@ export interface SettingsServiceOptions {
  * rejected here instead of taking the daemon down on the next restart.
  */
 export class SettingsService {
-  private pendingLogin: Bun.Subprocess<"pipe", "pipe", "pipe"> | undefined;
-  private pendingProvider: string | undefined;
+  private pendingLogin: PendingLogin | undefined;
+  private engineServices: Promise<AgentSessionServices> | undefined;
 
   public constructor(private readonly options: SettingsServiceOptions) {}
+
+  /**
+   * The engine services this daemon owns, bound to its isolated agent dir. The
+   * instance caches auth and model state at creation, so every write to
+   * `auth.json` / `models.json` must drop it via {@link invalidateEngine}.
+   */
+  private engine(): Promise<AgentSessionServices> {
+    this.engineServices ??= (async (): Promise<AgentSessionServices> => {
+      const agent = ensureOmoAgentDir(this.options.paths.root);
+      return await createOmoServices({ cwd: this.options.paths.session, agentDir: agent.dir });
+    })();
+    return this.engineServices;
+  }
+
+  /** Drops the cached engine so the next call re-reads auth.json and models.json. */
+  public invalidateEngine(): void {
+    this.engineServices = undefined;
+  }
 
   public async snapshot(): Promise<SettingsSnapshot> {
     const raw = this.readConfigRaw();
@@ -130,7 +161,7 @@ export class SettingsService {
       ownerHandle: config?.allowlistHandle ?? (typeof raw.allowlistHandle === "string" ? raw.allowlistHandle : ""),
       ownerName: typeof raw.ownerName === "string" ? raw.ownerName : "",
       mainSessionModel: config?.mainSessionModel ?? DEFAULT_MAIN_SESSION_MODEL,
-      fastMode: await this.fastModeEnabled(),
+      fastMode: this.fastModeEnabled(),
       mainTurnWatchdogSec: Math.round((config?.mainTurnWatchdogMs ?? DEFAULT_MAIN_TURN_WATCHDOG_MS) / 1_000),
       childMaxConcurrent: config?.children.maxConcurrent ?? DEFAULT_MAX_CONCURRENT_CHILDREN,
       childConversationalTimeoutSec: Math.round((config?.children.conversationalTimeoutMs ?? DEFAULT_CONVERSATIONAL_CHILD_TIMEOUT_MS) / 1_000),
@@ -353,24 +384,27 @@ export class SettingsService {
     }
     writeFileSync(this.options.paths.config, `${JSON.stringify(raw, null, 2)}\n`, { mode: 0o600 });
     if (fastModeChange !== undefined) {
-      await this.setFastMode(fastModeChange);
+      this.setFastMode(fastModeChange);
     }
     return { needsRestart, needsReload, ownerHandleChanged };
   }
 
 
-  /** Persists provider priority off after the SDK reports a fast-mode rejection. */
+  /** Persists provider priority off after the omo engine reports a fast-mode rejection. */
   public async disableFastMode(): Promise<void> {
-    await this.setFastMode(false);
+    this.setFastMode(false);
   }
 
-  private async fastModeEnabled(): Promise<boolean> {
-    const value = await this.gjc(["config", "get", "serviceTier"], 10_000).catch(() => "none");
-    return value.trim() === "priority";
+  private fastModeEnabled(): boolean {
+    const openai = readJsonObject(omoAgentDir(this.options.paths.root).settingsJson).openai;
+    return isRecord(openai) && openai.serviceTier === "priority";
   }
 
-  private async setFastMode(enabled: boolean): Promise<void> {
-    await this.gjc(["config", "set", "serviceTier", enabled ? "priority" : "none"], 10_000);
+  /** Engine settings are shared with the child runners, so only the tier key is rewritten. */
+  private setFastMode(enabled: boolean): void {
+    const settingsJson = ensureOmoAgentDir(this.options.paths.root).settingsJson;
+    const settings = { ...readJsonObject(settingsJson), openai: { serviceTier: enabled ? "priority" : "auto" } };
+    writeFileSync(settingsJson, `${JSON.stringify(settings, null, 2)}\n`, { mode: 0o600 });
   }
   /**
    * After a sign-in, pick a sensible main model for that provider unless the
@@ -400,47 +434,18 @@ export class SettingsService {
     return hit.id;
   }
 
-  /** OAuth providers gjc knows, popular ones first. Pulled from the CLI so new ones appear without a daemon change. */
+  /** OAuth providers the engine knows, popular ones first, so new ones appear without a daemon change. */
   private async listOAuthProvidersUncached(): Promise<{ readonly id: string; readonly label: string; readonly popular: boolean }[]> {
-    const popular: [string, string][] = [
-      ["anthropic", "Claude (Anthropic)"],
-      ["openai-codex", "ChatGPT / Codex (OpenAI)"],
-      ["opengateway", "OpenGateway"],
-      ["commandcode-goat", "CommandCode GOAT"],
-      ["opencode-go", "OpenCode Go"],
-      ["google-antigravity", "Google Antigravity"],
-      ["openrouter", "OpenRouter"],
-      ["xai", "xAI Grok"],
-      ["deepseek", "DeepSeek"],
-      ["glm-zcode", "Z.ai GLM"],
-      ["kimi-code", "Kimi (Moonshot)"],
-      ["minimax-code", "MiniMax"],
-    ];
-    let known: string[] = [];
-    try {
-      const child = Bun.spawn([this.binary(), "auth-broker", "login", "__list__"], { stdout: "pipe", stderr: "pipe", env: { ...process.env, HOME: this.options.paths.home } });
-      const err = await new Response(child.stderr).text();
-      await child.exited;
-      const m = /Known:\s*([a-z0-9-,\s]+)/i.exec(err);
-      known = m ? m[1]!.split(",").map((x) => x.trim()).filter(Boolean) : [];
-    } catch {
-      known = [];
-    }
-    const set = new Set(known.length > 0 ? known : popular.map(([id]) => id));
-    const out: { id: string; label: string; popular: boolean }[] = [];
-    for (const [id, label] of popular) {
-      if (set.has(id)) { out.push({ id, label, popular: true }); set.delete(id); }
-    }
-    for (const id of [...set].sort()) {
-      out.push({ id, label: id, popular: false });
-    }
-    return out;
+    const services = await this.engine();
+    return services.authStorage.getOAuthProviders()
+      .map(({ id }) => ({ id, label: PROVIDER_LABELS[id] ?? id, popular: POPULAR_OAUTH_PROVIDERS.includes(id) }))
+      .sort((left, right) => Number(right.popular) - Number(left.popular) || left.label.localeCompare(right.label));
   }
 
   /**
-   * Registers a custom OpenAI/Anthropic-compatible endpoint as a gjc provider
-   * in ~/.gjc/agent/models.yml, stores its key in the env file, and selects
-   * `<id>/<model>` as the main model. Mirrors how gjc itself models gateways.
+   * Registers a custom OpenAI/Anthropic-compatible endpoint as an engine
+   * provider in the daemon's `models.json`, stores its key in the env file, and
+   * selects `<id>/<model>` as the main model.
    */
   public async addCustomProvider(input: { readonly id: string; readonly baseUrl: string; readonly api: "openai-responses" | "openai-completions" | "anthropic-messages"; readonly apiKey: string; readonly model: string }): Promise<{ readonly modelId: string }> {
     const id = input.id.trim().toLowerCase();
@@ -452,29 +457,31 @@ export class SettingsService {
     const env = parseEnvFile(this.options.paths.envFile);
     env.set(envKey, input.apiKey.trim());
     writeEnvFile(this.options.paths.envFile, env);
-    const yamlPath = join(this.options.paths.gjcHome, "models.yml");
-    mkdirSync(dirname(yamlPath), { recursive: true });
-    let yaml = existsSync(yamlPath) ? readFileSync(yamlPath, "utf8") : "providers:\n";
-    if (!/^providers:\s*$/m.test(yaml)) yaml = `providers:\n${yaml}`;
-    // Replace an existing block with the same id (top-level 2-space key) or append.
-    const blockRe = new RegExp(`^  ${id}:\\s*\\n(?:^(?:    .*|\\s*)\\n)*`, "m");
-    const block = [
-      `  ${id}:`,
-      `    baseUrl: ${input.baseUrl.trim().replace(/\/+$/, "")}`,
-      `    apiKeyEnv: ${envKey}`,
-      `    api: ${input.api}`,
-      `    auth: apiKey`,
-      `    models:`,
-      `      - id: ${input.model.trim()}`,
-      `        name: ${input.model.trim()} via ${id}`,
-      "",
-    ].join("\n");
-    yaml = blockRe.test(yaml) ? yaml.replace(blockRe, block) : yaml.replace(/^providers:\s*\n/m, `providers:\n${block}`);
-    writeFileSync(yamlPath, yaml);
+    const modelsJson = ensureOmoAgentDir(this.options.paths.root).modelsJson;
+    const catalog = readJsonObject(modelsJson);
+    const model = input.model.trim();
+    const providers = { ...(isRecord(catalog.providers) ? catalog.providers : {}) };
+    providers[id] = {
+      name: id,
+      baseUrl: input.baseUrl.trim().replace(/\/+$/, ""),
+      api: input.api,
+      apiKey: input.apiKey.trim(),
+      models: [{
+        id: model,
+        name: model,
+        reasoning: false,
+        input: ["text"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 200_000,
+        maxTokens: 8_192,
+      }],
+    };
+    writeFileSync(modelsJson, `${JSON.stringify({ ...catalog, providers }, null, 2)}\n`, { mode: 0o600 });
+    this.invalidateEngine();
     this.invalidate("models");
     this.invalidate("accounts");
 
-    const modelId = `${id}/${input.model.trim()}`;
+    const modelId = `${id}/${model}`;
     const raw = this.readConfigRaw();
     raw.mainSessionModel = modelId;
     writeFileSync(this.options.paths.config, `${JSON.stringify(raw, null, 2)}\n`, { mode: 0o600 });
@@ -501,7 +508,7 @@ export class SettingsService {
     return inflight;
   }
 
-  /** Warm the slow gjc-backed lists so the panel opens instantly. */
+  /** Warm the slow engine-backed lists so the panel opens instantly. */
   public warm(): void {
     void this.listModels().catch(() => undefined);
     void this.listOAuthProviders().catch(() => undefined);
@@ -521,7 +528,8 @@ export class SettingsService {
   }
 
   public async adoptCredential(id: string): Promise<{ readonly adopted: boolean; readonly provider: string; readonly restarting: boolean }> {
-    const { provider } = await adoptExternalCredential(id);
+    const { provider } = await adoptExternalCredential(id, { authPath: ensureOmoAgentDir(this.options.paths.root).authJson });
+    this.invalidateEngine();
     return { adopted: true, provider, restarting: true };
   }
 
@@ -538,121 +546,114 @@ export class SettingsService {
   }
 
   private async listModelsUncached(): Promise<ModelChoice[]> {
-    const result = await this.gjc(["--list-models"], 30_000);
-    // The "Canonical models" table shows one selected variant per canonical
-    // name; the "Provider models" table below it lists every provider×model
-    // pair (all of models.yml). Parse the latter, keep canonical as an alias.
-    const models = new Map<string, ModelChoice>();
-    let section: "canonical" | "provider" | undefined;
-    for (const line of result.split("\n")) {
-      if (/^Canonical models/.test(line)) { section = "canonical"; continue; }
-      if (/^Provider models/.test(line)) { section = "provider"; continue; }
-      if (section === "provider") {
-        const m = /^(\S+)\s+(\S+)\s+/.exec(line);
-        if (!m || m[1] === "provider") continue;
-        const id = `${m[1]}/${m[2]}`;
-        if (!models.has(id)) models.set(id, { canonical: m[2]!, provider: m[1]!, id });
-      } else if (section === "canonical") {
-        const m = /^(\S+)\s+(\S+)\/(\S+)\s+/.exec(line);
-        if (!m || m[1] === "canonical") continue;
-        const id = `${m[2]}/${m[3]}`;
-        const existing = models.get(id);
-        models.set(id, { canonical: m[1]!, provider: m[2]!, id, ...(existing ? {} : {}) });
-      }
-    }
-    return [...models.values()].sort((a, b) => a.id.localeCompare(b.id));
+    const services = await this.engine();
+    const models = await services.modelRuntime.getAvailable();
+    return models
+      .map((model) => ({ id: `${model.provider}/${model.id}`, provider: model.provider, canonical: model.id }))
+      .sort((left, right) => left.id.localeCompare(right.id));
   }
 
 
+  /** The engine keys credentials by provider, so a provider has at most one account row. */
   private async listAccountsUncached(): Promise<AccountRow[]> {
-    const raw = await this.gjc(["accounts", "list", "--json"], 30_000);
-    const parsed = JSON.parse(raw) as { readonly accounts?: readonly Record<string, unknown>[] };
-    return (parsed.accounts ?? []).map((a) => ({
-      id: String(a.id),
-      provider: String(a.provider),
-      kind: String(a.credentialKind),
-      identity: typeof a.identityLabel === "string" ? a.identityLabel : null,
-      health: isRecord(a.health) && typeof a.health.status === "string" ? a.health.status : "unknown",
+    const services = await this.engine();
+    const credentials = await services.modelRuntime.listCredentials();
+    return credentials.map(({ providerId, type }) => ({
+      id: `${providerId}:stored`,
+      provider: providerId,
+      kind: type,
+      identity: credentialIdentity(services.authStorage.get(providerId)),
+      health: "unknown",
     }));
   }
 
   /**
-   * Starts the same OAuth flow as the gjc TUI's /login. The CLI prints the
-   * authorization URL then waits for the browser callback on localhost; we
-   * hand the URL to the panel (which opens it) and let the CLI finish in the
-   * background. The daemon never sees the tokens: they land in ~/.gjc auth.db.
+   * Runs the engine's OAuth flow in this process. The engine publishes the
+   * authorization URL and then waits for either its localhost callback or a
+   * pasted code; we hand the URL to the panel (which opens it) and leave the
+   * flow running until {@link finishLogin}. Tokens go straight to the daemon's
+   * own `auth.json` — nothing is returned to the caller.
    */
   public async startLogin(provider: string): Promise<{ readonly url: string; readonly manual: boolean }> {
     if (!/^[a-z0-9-]+$/.test(provider)) {
       throw new Error("bad provider id");
     }
-    this.pendingLogin?.kill();
-    // stdin must stay open: the CLI holds a readline prompt while it waits for
-    // the localhost callback (and accepts a pasted code there as fallback).
-    const child = Bun.spawn([this.binary(), "auth-broker", "login", provider], {
-      stdin: "pipe",
-      stdout: "pipe",
-      stderr: "pipe",
-      env: { ...process.env, HOME: this.options.paths.home, GJC_CODING_AGENT_DIR: this.options.paths.gjcHome },
-    });
-    this.pendingLogin = child;
-    this.pendingProvider = provider;
-    void child.exited.then(() => { if (this.pendingLogin === child) { this.pendingLogin = undefined; } });
-    // The CLI prints the URL to stdout (sometimes stderr), fully buffered
-    // when piped; drain both streams continuously and match on any https URL.
-    let buffer = "";
-    const decoder = new TextDecoder();
-    const drain = async (stream: ReadableStream<Uint8Array>): Promise<void> => {
-      const reader = stream.getReader();
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-      }
-    };
-    void drain(child.stdout);
-    void drain(child.stderr);
-    const deadline = Date.now() + 30_000;
-    while (Date.now() < deadline) {
-      const url = /https:\/\/[^\s"'<>]+/.exec(buffer)?.[0];
-      if (url) {
-        return { url, manual: true };
-      }
-      if (child.exitCode !== null) {
-        break;
-      }
-      await Bun.sleep(200);
+    if (this.pendingLogin) {
+      this.abortPendingLogin(this.pendingLogin);
     }
-    child.kill();
-    throw new Error(`gjc did not print a login URL for ${provider}`);
+    const services = await this.engine();
+    const abort = new AbortController();
+    const authorization = Promise.withResolvers<string>();
+    const code = Promise.withResolvers<string>();
+    const completion = services.authStorage.login(provider, {
+      onAuth: ({ url }) => { authorization.resolve(url); },
+      onDeviceCode: ({ verificationUri }) => { authorization.resolve(verificationUri); },
+      onPrompt: () => code.promise,
+      onManualCodeInput: () => code.promise,
+      onSelect: async (prompt) => prompt.options[0]?.id,
+      signal: abort.signal,
+    });
+    const pending: PendingLogin = { provider, completion, abort, submitCode: code.resolve };
+    this.pendingLogin = pending;
+    // Nothing awaits the flow until finishLogin, so an abandoned attempt would
+    // surface as an unhandled rejection; finishLogin re-awaits and rethrows.
+    void completion.catch(() => undefined);
+    const url = await Promise.race([
+      authorization.promise,
+      // A flow that ends before publishing a URL has failed: its rejection is
+      // the useful error, and a success leaves nothing for the panel to open.
+      completion.then(() => undefined),
+      afterMs(30_000),
+    ]).catch((error: unknown) => {
+      this.abortPendingLogin(pending);
+      throw error;
+    });
+    if (url === undefined) {
+      this.abortPendingLogin(pending);
+      throw new Error(`omo engine did not produce a login URL for ${provider}`);
+    }
+    return { url, manual: true };
   }
 
-  /** Completes a login by pasting the redirect URL / code into the waiting CLI. */
+  /**
+   * Completes a login with the redirect URL / code the owner pasted. A flow
+   * that already finished through its localhost callback never asked for one,
+   * and simply reports the credential it stored.
+   */
   public async finishLogin(codeOrUrl: string): Promise<void> {
-    const child = this.pendingLogin;
-    if (!child) {
+    const pending = this.pendingLogin;
+    if (!pending) {
       throw new Error("no login in progress");
     }
-    const stdin = child.stdin;
-    if (typeof stdin !== "object" || stdin === null) {
-      throw new Error("login process has no stdin");
+    this.pendingLogin = undefined;
+    pending.submitCode(codeOrUrl.trim());
+    // The tag distinguishes a flow that resolved void from the expired deadline.
+    const finished = await Promise.race([pending.completion.then(() => "stored" as const), afterMs(60_000)]).catch((error: unknown) => {
+      pending.abort.abort();
+      throw error;
+    });
+    if (finished === undefined) {
+      pending.abort.abort();
+      throw new Error("login did not complete in time");
     }
-    stdin.write(`${codeOrUrl.trim()}\n`);
-    await stdin.flush();
-    const code = await Promise.race([child.exited, Bun.sleep(60_000).then(() => -1)]);
-    if (code !== 0) {
-      child.kill();
-      throw new Error(code === -1 ? "login did not complete in time" : "login failed; try again");
-    }
+    this.invalidateEngine();
     this.invalidate("accounts");
+    await this.defaultModelFor(pending.provider);
+  }
 
-    if (this.pendingProvider) {
-      await this.defaultModelFor(this.pendingProvider);
+  /** Ends an attempt: the engine's callback server and its pending prompt stop with it. */
+  private abortPendingLogin(pending: PendingLogin): void {
+    pending.abort.abort();
+    if (this.pendingLogin === pending) {
+      this.pendingLogin = undefined;
     }
   }
 
-  public async logout(provider: string, account: string): Promise<void> {
-    await this.gjc(["accounts", "logout", provider, "--account", account], 30_000);
+  /** The engine stores one credential per provider, so the account id names the only row there is. */
+  public async logout(provider: string, _account: string): Promise<void> {
+    const services = await this.engine();
+    services.authStorage.logout(provider);
+    this.invalidateEngine();
     this.invalidate("accounts");
   }
 
@@ -663,28 +664,32 @@ export class SettingsService {
     const parsed: unknown = JSON.parse(readFileSync(this.options.paths.config, "utf8"));
     return isRecord(parsed) ? { ...parsed } : {};
   }
+}
 
-  private binary(): string {
-    return this.options.gjcBinary ?? this.options.paths.gjcBinary;
-  }
+/** Resolves `undefined` after `ms`; unref'd so a pending deadline never holds the process open. */
+function afterMs(ms: number): Promise<undefined> {
+  return new Promise((resolve) => { setTimeout(() => { resolve(undefined); }, ms).unref(); });
+}
 
-  private async gjc(argv: readonly string[], timeoutMs: number): Promise<string> {
-    const child = Bun.spawn([this.binary(), ...argv], {
-      stdout: "pipe",
-      stderr: "pipe",
-      env: { ...process.env, HOME: this.options.paths.home, GJC_CODING_AGENT_DIR: this.options.paths.gjcHome },
-    });
-    const timer = setTimeout(() => child.kill(), timeoutMs);
-    try {
-      const [code, out, err] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]);
-      if (code !== 0) {
-        throw new Error(`gjc ${argv[0]} failed: ${(err || out).trim().slice(0, 300)}`);
-      }
-      return out;
-    } finally {
-      clearTimeout(timer);
-    }
+/** Account label for a stored credential; providers carry it as their own extra field. */
+function credentialIdentity(credential: unknown): string | null {
+  if (!isRecord(credential)) {
+    return null;
   }
+  const identity = credential.identity;
+  if (isRecord(identity) && typeof identity.email === "string") {
+    return identity.email;
+  }
+  return typeof credential.accountId === "string" ? credential.accountId : null;
+}
+
+/** A JSON object file the daemon merges into; anything unreadable starts empty. */
+function readJsonObject(path: string): Record<string, unknown> {
+  if (!existsSync(path)) {
+    return {};
+  }
+  const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
+  return isRecord(parsed) ? parsed : {};
 }
 
 

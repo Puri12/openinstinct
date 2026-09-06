@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { GjcExternalRunner } from "../../src/children/runners/gjc-external.ts";
+import { OmoExternalRunner } from "../../src/children/runners/omo-external.ts";
 
 const directories: string[] = [];
-const fixture = join(import.meta.dir, "../fixtures/children/gjc-stub.sh");
+const fixture = join(import.meta.dir, "../fixtures/children/omo-stub.sh");
 
 afterEach(() => {
   for (const directory of directories.splice(0)) {
@@ -24,12 +24,12 @@ async function waitFor(predicate: () => boolean, timeoutMs = 1_000): Promise<voi
   }
 }
 
-describe("GjcExternalRunner", () => {
-  test("uses gjc -p --mode json and maps the terminal JSON result", async () => {
+describe("OmoExternalRunner", () => {
+  test("uses the omo engine CLI in -p --mode json and maps the terminal JSON result", async () => {
     chmodSync(fixture, 0o700);
-    const root = mkdtempSync(join(tmpdir(), "openinstinct-gjc-external-"));
+    const root = mkdtempSync(join(tmpdir(), "openinstinct-omo-external-"));
     directories.push(root);
-    const runner = new GjcExternalRunner({ root, gjcPath: fixture, env: { ...process.env, HOME: root } });
+    const runner = new OmoExternalRunner({ root, cliPath: fixture, env: { ...process.env, HOME: root } });
     let progressEvents = 0;
 
     await expect(runner.run({
@@ -48,9 +48,9 @@ describe("GjcExternalRunner", () => {
 
   test("reports stderr output as progress before the terminal stdout record", async () => {
     chmodSync(fixture, 0o700);
-    const root = mkdtempSync(join(tmpdir(), "openinstinct-gjc-external-"));
+    const root = mkdtempSync(join(tmpdir(), "openinstinct-omo-external-"));
     directories.push(root);
-    const runner = new GjcExternalRunner({ root, gjcPath: fixture, env: { ...process.env, HOME: root } });
+    const runner = new OmoExternalRunner({ root, cliPath: fixture, env: { ...process.env, HOME: root } });
     let progressEvents = 0;
 
     await expect(runner.run({
@@ -69,14 +69,14 @@ describe("GjcExternalRunner", () => {
 
   test("cancels the spawned process group when the lifecycle aborts", async () => {
     chmodSync(fixture, 0o700);
-    const root = mkdtempSync(join(tmpdir(), "openinstinct-gjc-external-"));
+    const root = mkdtempSync(join(tmpdir(), "openinstinct-omo-external-"));
     directories.push(root);
     const nestedPidPath = join(root, "nested.pid");
-    const runner = new GjcExternalRunner({
+    const runner = new OmoExternalRunner({
       root,
-      gjcPath: fixture,
+      cliPath: fixture,
       killGraceMs: 100,
-      env: { ...process.env, HOME: root, GJC_STUB_CHILD_PID_FILE: nestedPidPath },
+      env: { ...process.env, HOME: root, OMO_STUB_CHILD_PID_FILE: nestedPidPath },
     });
     const controller = new AbortController();
     const result = runner.run({
@@ -99,9 +99,9 @@ describe("GjcExternalRunner", () => {
 
   test("collects streaming JSON records as a completed terminal response", async () => {
     chmodSync(fixture, 0o700);
-    const root = mkdtempSync(join(tmpdir(), "openinstinct-gjc-external-"));
+    const root = mkdtempSync(join(tmpdir(), "openinstinct-omo-external-"));
     directories.push(root);
-    const runner = new GjcExternalRunner({ root, gjcPath: fixture, env: { ...process.env, HOME: root } });
+    const runner = new OmoExternalRunner({ root, cliPath: fixture, env: { ...process.env, HOME: root } });
 
     await expect(runner.run({
       childId: "external-multi",
@@ -113,11 +113,11 @@ describe("GjcExternalRunner", () => {
     });
   });
 
-  test("extracts final assistant text from a GJC agent_end JSON event", async () => {
+  test("extracts final assistant text from an omo engine agent_end JSON event", async () => {
     chmodSync(fixture, 0o700);
-    const root = mkdtempSync(join(tmpdir(), "openinstinct-gjc-external-"));
+    const root = mkdtempSync(join(tmpdir(), "openinstinct-omo-external-"));
     directories.push(root);
-    const runner = new GjcExternalRunner({ root, gjcPath: fixture, env: { ...process.env, HOME: root } });
+    const runner = new OmoExternalRunner({ root, cliPath: fixture, env: { ...process.env, HOME: root } });
 
     await expect(runner.run({
       childId: "external-agent-end",
@@ -129,11 +129,48 @@ describe("GjcExternalRunner", () => {
     });
   });
 
-  test("preserves an explicit failed terminal report on nonzero GJC exit", async () => {
-    chmodSync(fixture, 0o700);
-    const root = mkdtempSync(join(tmpdir(), "openinstinct-gjc-external-"));
+  test("runs a .js engine bundle under the runtime with the omo flag set and the agent dir exported", async () => {
+    const root = mkdtempSync(join(tmpdir(), "openinstinct-omo-external-"));
     directories.push(root);
-    const runner = new GjcExternalRunner({ root, gjcPath: fixture, env: { ...process.env, HOME: root } });
+    const bundle = join(root, "cli.js");
+    writeFileSync(bundle, "const summary = JSON.stringify({ argv: process.argv.slice(2), agentDir: [process.env.SENPI_CODING_AGENT_DIR, process.env.OMO_CODING_AGENT_DIR, process.env.PI_CODING_AGENT_DIR] });\nconsole.log(JSON.stringify({ state: \"completed\", summary }));\n", { mode: 0o600 });
+    const agentDir = join(root, "agent");
+    const runner = new OmoExternalRunner({
+      root,
+      cliPath: bundle,
+      agentDir,
+      modelPattern: "oi-test/oi-model",
+      env: { ...process.env, HOME: root },
+    });
+
+    const result = await runner.run({
+      childId: "external-bundle",
+      title: "Bundle",
+      prompt: "BUNDLE",
+    }, new AbortController().signal);
+
+    expect(result.state).toBe("completed");
+    const spawned = JSON.parse(result.summary) as { readonly argv: string[]; readonly agentDir: string[] };
+    expect(spawned.argv).toEqual([
+      "-p",
+      "--mode", "json",
+      "--no-extensions",
+      "--no-skills",
+      "--no-prompt-templates",
+      "--no-themes",
+      "--no-context-files",
+      "--session-dir", join(root, "sessions", "external-bundle"),
+      "--model", "oi-test/oi-model",
+      "BUNDLE",
+    ]);
+    expect(spawned.agentDir).toEqual([agentDir, agentDir, agentDir]);
+  });
+
+  test("preserves an explicit failed terminal report on nonzero omo engine exit", async () => {
+    chmodSync(fixture, 0o700);
+    const root = mkdtempSync(join(tmpdir(), "openinstinct-omo-external-"));
+    directories.push(root);
+    const runner = new OmoExternalRunner({ root, cliPath: fixture, env: { ...process.env, HOME: root } });
 
     await expect(runner.run({
       childId: "external-crash",

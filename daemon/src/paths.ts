@@ -9,10 +9,10 @@ export interface DataPaths {
   readonly envFile: string;
   /** Dedicated persistent Chrome profile for the browser tool (owner logs in here once). */
   readonly chromeProfile: string;
-  /** Isolated gjc state (sessions, auth, models.yml). Never the host's ~/.gjc. */
-  readonly gjcHome: string;
-  /** The gjc binary OpenInstinct owns, version-locked to the vendored SDK. */
-  readonly gjcBinary: string;
+  /** Isolated omo engine state (auth.json, models.json, settings.json, sessions). Never the host's ~/.omo/agent. */
+  readonly omoHome: string;
+  /** The vendored omo engine CLI used by the external child runner. */
+  readonly omoCli: string;
   readonly stateDb: string;
   readonly logs: string;
   readonly daemonLog: string;
@@ -40,8 +40,8 @@ export function dataPaths(home = process.env.HOME ?? homedir()): DataPaths {
     config: join(root, "config.json"),
     envFile: join(root, "env"),
     chromeProfile: join(root, "chrome-profile"),
-    gjcHome: join(root, "gjc"),
-    gjcBinary: join(root, "bin", "gjc"),
+    omoHome: join(root, "omo"),
+    omoCli: join(root, "lib", "daemon", "node_modules", "@code-yeongyu", "senpi", "dist", "cli.js"),
     stateDb: join(root, "state.db"),
     logs,
     daemonLog: join(logs, "daemon.ndjson"),

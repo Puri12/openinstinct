@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { SdkConversationRunner } from "../daemon/src/children/runners/sdk-conversation.ts";
+import { OmoConversationRunner } from "../daemon/src/children/runners/omo-conversation.ts";
 import { ChildLifecycle } from "../daemon/src/children/lifecycle.ts";
 import { ChildRegistry } from "../daemon/src/children/registry.ts";
 import { TerminalJournal } from "../daemon/src/children/terminal-journal.ts";
@@ -37,16 +37,16 @@ class StaleSession {
 
 async function staleGenerationRepro(): Promise<Record<string, unknown>> {
   const session = new StaleSession();
-  const runner = new SdkConversationRunner({
+  const runner = new OmoConversationRunner({
     root: "/tmp/red-team",
     factory: { create: async () => session },
   });
   const conversation = await runner.open({ childId: "stale-child", title: "stale" }, new AbortController().signal);
   const first = conversation.turn("first", new AbortController().signal, () => undefined);
   await Bun.sleep(1);
-  session.emit({ type: "agent_start", sdkRunToken: "run-1" });
+  session.emit({ type: "agent_start", runToken: "run-1" });
   session.emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "first-answer" } });
-  session.emit({ type: "agent_end", sdkRunToken: "run-1", stopReason: "completed" });
+  session.emit({ type: "agent_end", runToken: "run-1", stopReason: "completed" });
   await first;
 
   const second = conversation.turn("second", new AbortController().signal, () => undefined);
@@ -67,20 +67,20 @@ async function staleGenerationRepro(): Promise<Record<string, unknown>> {
 
 async function repeatedAgentStartRepro(): Promise<Record<string, unknown>> {
   const session = new StaleSession();
-  const runner = new SdkConversationRunner({
+  const runner = new OmoConversationRunner({
     root: "/tmp/red-team",
     factory: { create: async () => session },
   });
   const conversation = await runner.open({ childId: "repeated-start-child", title: "repeated start" }, new AbortController().signal);
   const turn = conversation.turn("work", new AbortController().signal, () => undefined);
   await Bun.sleep(1);
-  session.emit({ type: "agent_start", sdkRunToken: "run-1" });
-  session.emit({ type: "agent_start", sdkRunToken: "maintenance" });
+  session.emit({ type: "agent_start", runToken: "run-1" });
+  session.emit({ type: "agent_start", runToken: "maintenance" });
   session.emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "work-answer" } });
-  session.emit({ type: "agent_end", sdkRunToken: "run-1", stopReason: "completed" });
+  session.emit({ type: "agent_end", runToken: "run-1", stopReason: "completed" });
   const beforeMaintenanceEnd = await Promise.race([turn.then(() => "settled"), Bun.sleep(20).then(() => "pending")]);
   if (beforeMaintenanceEnd === "pending") {
-    session.emit({ type: "agent_end", sdkRunToken: "maintenance", stopReason: "completed" });
+    session.emit({ type: "agent_end", runToken: "maintenance", stopReason: "completed" });
   }
   const result = await turn;
   return {

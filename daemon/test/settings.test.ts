@@ -14,7 +14,43 @@ function make(): { service: SettingsService; paths: ReturnType<typeof dataPaths>
   const paths = dataPaths(join(root, "home")); mkdirSync(paths.root, { recursive: true });
   writeFileSync(paths.config, JSON.stringify({ allowlistHandle: "+821012345678", ownerName: "b" }));
   const soul = join(root, "SOUL.md"); writeFileSync(soul, "<!-- soul-version: 3 -->\nYou are Gajae, a gremlin with opinions and a keyboard.");
-  return { service: new SettingsService({ paths, soulPath: soul, gjcBinary: "/nonexistent/gjc" }), paths, soul };
+  return { service: new SettingsService({ paths, soulPath: soul }), paths, soul };
+}
+
+/** The fake provider from the engine port notes: usable offline, big enough context for a session. */
+const FAKE_PROVIDER = {
+  providers: {
+    "oi-test": {
+      name: "OI Test",
+      baseUrl: "http://127.0.0.1:1/v1",
+      apiKey: "test-key",
+      api: "openai-completions",
+      models: [{
+        id: "oi-model",
+        name: "OI Model",
+        reasoning: false,
+        input: ["text"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 200_000,
+        maxTokens: 8_192,
+      }],
+    },
+  },
+} as const;
+
+/** Pins the engine to the test's own agent dir so it never reads the developer's ~/.omo. */
+async function withAgentDir(dir: string, body: () => Promise<void>): Promise<void> {
+  const previous = process.env.SENPI_CODING_AGENT_DIR;
+  process.env.SENPI_CODING_AGENT_DIR = dir;
+  try {
+    await body();
+  } finally {
+    if (previous === undefined) {
+      delete process.env.SENPI_CODING_AGENT_DIR;
+    } else {
+      process.env.SENPI_CODING_AGENT_DIR = previous;
+    }
+  }
 }
 
 describe("settings service", () => {
@@ -159,6 +195,93 @@ describe("settings service", () => {
       childStatusListLimit: 25,
       childStatusTextBytes: 1_024,
       childToolGuardMs: 75,
+    });
+  });
+
+  test("fast mode writes the engine service tier and keeps the other engine settings", async () => {
+    const { service, paths } = make();
+    mkdirSync(paths.omoHome, { recursive: true });
+    writeFileSync(join(paths.omoHome, "settings.json"), JSON.stringify({ steeringMode: "all" }));
+
+    await withAgentDir(paths.omoHome, async () => {
+      await service.apply({ fastMode: true });
+      expect(JSON.parse(readFileSync(join(paths.omoHome, "settings.json"), "utf8"))).toEqual({
+        steeringMode: "all",
+        openai: { serviceTier: "priority" },
+      });
+      await expect(service.snapshot()).resolves.toMatchObject({ fastMode: true });
+
+      await service.apply({ fastMode: false });
+      expect(JSON.parse(readFileSync(join(paths.omoHome, "settings.json"), "utf8"))).toMatchObject({
+        steeringMode: "all",
+        openai: { serviceTier: "auto" },
+      });
+      await expect(service.snapshot()).resolves.toMatchObject({ fastMode: false });
+    });
+  });
+
+  test("adding a custom provider registers it in the engine catalog and selects its model", async () => {
+    const { service, paths } = make();
+
+    await withAgentDir(paths.omoHome, async () => {
+      await expect(service.addCustomProvider({
+        id: "my-gateway",
+        baseUrl: "https://gateway.example.com/v1/",
+        api: "openai-completions",
+        apiKey: "sk-gateway",
+        model: "gpt-5",
+      })).resolves.toEqual({ modelId: "my-gateway/gpt-5" });
+
+      const catalog = JSON.parse(readFileSync(join(paths.omoHome, "models.json"), "utf8")) as {
+        readonly providers: Record<string, Record<string, unknown>>;
+      };
+      expect(catalog.providers["my-gateway"]).toMatchObject({
+        name: "my-gateway",
+        baseUrl: "https://gateway.example.com/v1",
+        api: "openai-completions",
+        apiKey: "sk-gateway",
+        models: [{ id: "gpt-5", name: "gpt-5", contextWindow: 200_000, maxTokens: 8_192 }],
+      });
+      expect(JSON.parse(readFileSync(paths.config, "utf8"))).toMatchObject({ mainSessionModel: "my-gateway/gpt-5" });
+      expect(readFileSync(paths.envFile, "utf8")).toContain("OI_MY_GATEWAY_API_KEY=sk-gateway");
+    });
+  });
+
+  test("lists a provider from the engine model catalog as a provider-qualified choice", async () => {
+    const { service, paths } = make();
+    mkdirSync(paths.omoHome, { recursive: true });
+    writeFileSync(join(paths.omoHome, "models.json"), JSON.stringify(FAKE_PROVIDER));
+
+    await withAgentDir(paths.omoHome, async () => {
+      await expect(service.listModels()).resolves.toContainEqual({
+        id: "oi-test/oi-model",
+        provider: "oi-test",
+        canonical: "oi-model",
+      });
+    });
+  });
+
+  test("lists a stored engine credential as one account row per provider", async () => {
+    const { service, paths } = make();
+    mkdirSync(paths.omoHome, { recursive: true });
+    writeFileSync(join(paths.omoHome, "auth.json"), JSON.stringify({
+      anthropic: {
+        type: "oauth",
+        access: "access-token",
+        refresh: "refresh-token",
+        expires: Date.now() + 3_600_000,
+        identity: { email: "owner@example.com" },
+      },
+    }));
+
+    await withAgentDir(paths.omoHome, async () => {
+      await expect(service.listAccounts()).resolves.toEqual([{
+        id: "anthropic:stored",
+        provider: "anthropic",
+        kind: "oauth",
+        identity: "owner@example.com",
+        health: "unknown",
+      }]);
     });
   });
 

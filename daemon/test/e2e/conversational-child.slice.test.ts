@@ -10,8 +10,8 @@ import { StateStoreChildStatusReader } from "../../src/children/status.ts";
 import {
   createChildNudgeTool,
   createChildStatusTool,
-} from "../../src/sdk-session/child-tools.ts";
-import type { MainTurnResult } from "../../src/sdk-session/main-session.ts";
+} from "../../src/omo-session/child-tools.ts";
+import type { MainTurnResult } from "../../src/omo-session/main-session.ts";
 import { TerminalJournal } from "../../src/children/terminal-journal.ts";
 import { openStateStore, type StateStore } from "../../src/store/index.ts";
 import type { OutboundDelivery } from "../../src/delivery/service.ts";

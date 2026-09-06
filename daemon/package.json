@@ -7,8 +7,9 @@
     "test": "bun test test"
   },
   "dependencies": {
-    "@gajae-code/coding-agent": "0.16.0",
-    "@gajae-code/utils": "0.16.0",
-    "croner": "^10.0.1"
+    "@code-yeongyu/senpi": "2026.9.4-3",
+    "chrome-devtools-mcp": "1.8.0",
+    "croner": "^10.0.1",
+    "typebox": "1.3.18"
   }
 }

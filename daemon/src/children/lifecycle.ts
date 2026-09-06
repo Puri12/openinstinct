@@ -98,7 +98,7 @@ interface ConversationalChildState {
 
 /**
  * Owns durable admission, bounded execution, and recovery for every child
- * kind. Task-tool children retain a conversational SDK object while idle;
+ * kind. Task-tool children retain a conversational omo engine session object while idle;
  * daemon-kind children retain the established one-shot runner path.
  */
 export class ChildLifecycle {
@@ -1069,7 +1069,7 @@ export class ChildLifecycle {
           try {
             this.remember(this.options.registry.updateProgress(child.id, progress));
           } catch {
-            // The child may have been terminated while an SDK progress event was queued.
+            // The child may have been terminated while an omo engine progress event was queued.
           }
         }))
         .then((result) => ({ kind: "turn" as const, result }), (error) => ({ kind: "turn_failed" as const, error }));

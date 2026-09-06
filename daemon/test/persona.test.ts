@@ -39,7 +39,8 @@ describe("runtime block", () => {
     expect(block.text).not.toContain("{{ownerHandle}}");
     expect(block.text).not.toContain("{{imessageState}}");
     expect(block.text).not.toContain("{{");
-    expect(block.text).toContain('user_data_dir: "/x/chrome"');
+    expect(block.text).toContain("mcp_browser_* tools");
+    expect(block.text).toContain("at /x/chrome");
     expect(block.text).toContain("child_status");
     expect(block.text).toContain("progress updates");
     expect(loadRuntimeBlock({ imessage: "detached", ownerName: "", chromeProfile: "/x" }).text).toContain("The owner is the owner.");

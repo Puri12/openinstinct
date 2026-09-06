@@ -38,7 +38,7 @@ export function renderLaunchAgentPlist(home: string): string {
     workingDirectory: escapeXml(paths.workingDirectory),
     standardOut: escapeXml(paths.standardOut),
     standardError: escapeXml(paths.standardError),
-    gjcHome: escapeXml(`${paths.root}/gjc`),
+    omoHome: escapeXml(`${paths.root}/omo`),
     path: escapeXml(`${paths.root}/bin:${home}/.local/bin:${home}/.bun/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`),
   };
 
@@ -61,8 +61,12 @@ export function renderLaunchAgentPlist(home: string): string {
     <string>${escaped.home}</string>
     <key>PATH</key>
     <string>${escaped.path}</string>
-    <key>GJC_CODING_AGENT_DIR</key>
-    <string>${escaped.gjcHome}</string>
+    <key>SENPI_CODING_AGENT_DIR</key>
+    <string>${escaped.omoHome}</string>
+    <key>OMO_CODING_AGENT_DIR</key>
+    <string>${escaped.omoHome}</string>
+    <key>PI_CODING_AGENT_DIR</key>
+    <string>${escaped.omoHome}</string>
   </dict>
   <key>StandardOutPath</key>
   <string>${escaped.standardOut}</string>

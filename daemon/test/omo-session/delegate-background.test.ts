@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { createDelegateBackgroundTool } from "../../src/sdk-session/main-session.ts";
+import { createDelegateBackgroundTool } from "../../src/omo-session/main-session.ts";
 
 describe("delegate_background tool", () => {
   test("registers and returns a child id without waiting for child work", async () => {
@@ -13,6 +13,7 @@ describe("delegate_background tool", () => {
     const result = await tool.execute(
       "tool-call-1",
       { title: "  Investigate  ", prompt: "  Find the answer  " } as never,
+      undefined,
       undefined,
       {} as never,
     );

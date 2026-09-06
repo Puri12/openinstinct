@@ -1,4 +1,4 @@
-import { createChildStatusTool } from "../daemon/src/sdk-session/child-tools.ts";
+import { createChildStatusTool } from "../daemon/src/omo-session/child-tools.ts";
 
 const events: Array<{ readonly event: string; readonly fields: Record<string, unknown> }> = [];
 const tool = createChildStatusTool({

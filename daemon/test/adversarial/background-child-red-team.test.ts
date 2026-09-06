@@ -8,8 +8,8 @@ import { ChildLifecycle } from "../../src/children/lifecycle.ts";
 import { ChildRegistry } from "../../src/children/registry.ts";
 import { TerminalJournal } from "../../src/children/terminal-journal.ts";
 import { InterimInbox, type InterimTurnDelivery, type InterimTurner } from "../../src/children/interim.ts";
-import { createChildNudgeTool, createChildStatusTool } from "../../src/sdk-session/child-tools.ts";
-import type { MainTurnResult } from "../../src/sdk-session/main-session.ts";
+import { createChildNudgeTool, createChildStatusTool } from "../../src/omo-session/child-tools.ts";
+import type { MainTurnResult } from "../../src/omo-session/main-session.ts";
 import { openStateStore, type StateStore } from "../../src/store/index.ts";
 import { Deferred, FakeConversationRunner } from "../children/fakes.ts";
 

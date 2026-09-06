@@ -29,4 +29,4 @@
 
 ## OpenInstinct adapters
 
-`adapters/` owns only environment-specific behavior: StateStore-backed intent closure, receipt paths and Openinstinct trailer names, injected-clock/provenance-aware capture writing, SDK-child canonicalization, read-only audit presentation, and main-session tools. The vendored files retain the shared registry/traversal/map/audit/BM25 behavior unchanged.
+`adapters/` owns only environment-specific behavior: StateStore-backed intent closure, receipt paths and Openinstinct trailer names, injected-clock/provenance-aware capture writing, engine-child canonicalization, read-only audit presentation, and main-session tools. The vendored files retain the shared registry/traversal/map/audit/BM25 behavior unchanged.

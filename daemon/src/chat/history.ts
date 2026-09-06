@@ -40,9 +40,9 @@ export function stripPanelMarker(text: string): { readonly text: string; readonl
 }
 
 /**
- * Reads the owner-facing subset of an SDK transcript without mutating it.
+ * Reads the owner-facing subset of an omo engine transcript without mutating it.
  *
- * `MainAgentSession.messages` is intentionally typed as unknown because the SDK
+ * `MainAgentSession.messages` is intentionally typed as unknown because the omo engine
  * owns the concrete transcript shape. Every field access below is therefore
  * shape-checked and malformed rows are ignored rather than allowed to break the
  * control socket.

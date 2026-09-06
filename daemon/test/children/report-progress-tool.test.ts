@@ -1,19 +1,20 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
+import { Compile } from "typebox/compile";
 
 import {
   CHILD_REPORTING_INSTRUCTION,
   createReportProgressTool,
 } from "../../src/children/report-progress-tool.ts";
 import {
-  SdkConversationRunner,
-} from "../../src/children/runners/sdk-conversation.ts";
+  OmoConversationRunner,
+} from "../../src/children/runners/omo-conversation.ts";
 import {
   childSystemPrompt,
-  SdkInProcessRunner,
+  OmoInProcessRunner,
   type ChildAgentSession,
   type ChildSessionFactory,
-} from "../../src/children/runners/sdk-inprocess.ts";
+} from "../../src/children/runners/omo-inprocess.ts";
 import { truncateUtf8 } from "../../src/children/utf8.ts";
 
 async function execute(tool: any, params: unknown): Promise<any> {
@@ -39,9 +40,9 @@ describe("report_progress", () => {
     });
     const long = "가".repeat(400);
 
-    expect((tool.parameters as any).safeParse({ text: "update", extra: true }).success).toBe(false);
-    expect((tool.parameters as any).safeParse({ text: "" }).success).toBe(false);
-    expect((tool.parameters as any).safeParse({ text: "x".repeat(4_001) }).success).toBe(false);
+    expect(Compile(tool.parameters).Check({ text: "update", extra: true })).toBe(false);
+    expect(Compile(tool.parameters).Check({ text: "" })).toBe(false);
+    expect(Compile(tool.parameters).Check({ text: "x".repeat(4_001) })).toBe(false);
     await expect(execute(tool, { text: long })).resolves.toEqual({
       content: [{ type: "text", text: "Reported (truncated to 1024 bytes)." }],
       details: { accepted: true, truncated: true, bytes: 1_024 },
@@ -77,8 +78,8 @@ describe("report_progress", () => {
         return session;
       },
     };
-    const conversational = new SdkConversationRunner({ root: "/tmp/report-progress", factory });
-    const oneShot = new SdkInProcessRunner({ root: "/tmp/report-progress", factory });
+    const conversational = new OmoConversationRunner({ root: "/tmp/report-progress", factory });
+    const oneShot = new OmoInProcessRunner({ root: "/tmp/report-progress", factory });
 
     const conversation = await conversational.open({
       childId: "conversation-child",
@@ -91,10 +92,10 @@ describe("report_progress", () => {
     expect(calls[0]).toMatchObject({ conversational: true, customTools: [expect.objectContaining({ name: "report_progress" })] });
     expect(calls[1]).toMatchObject({ conversational: false });
     expect(calls[1]?.customTools).toBeUndefined();
-    expect(childSystemPrompt([], true)).toContain(CHILD_REPORTING_INSTRUCTION);
-    expect(childSystemPrompt([], false)).not.toContain(CHILD_REPORTING_INSTRUCTION);
+    expect(childSystemPrompt(true)).toContain(CHILD_REPORTING_INSTRUCTION);
+    expect(childSystemPrompt(false)).not.toContain(CHILD_REPORTING_INSTRUCTION);
 
-    const mainSource = readFileSync(new URL("../../src/sdk-session/main-session.ts", import.meta.url), "utf8");
+    const mainSource = readFileSync(new URL("../../src/omo-session/main-session.ts", import.meta.url), "utf8");
     expect(mainSource).not.toContain("report-progress-tool");
   });
 });

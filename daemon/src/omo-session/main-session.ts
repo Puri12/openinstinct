@@ -1,14 +1,14 @@
-import { randomUUID } from "node:crypto";
 import { dirname } from "node:path";
 import { DEFAULT_MAIN_TURN_WATCHDOG_MS as RUNTIME_DEFAULT_MAIN_TURN_WATCHDOG_MS } from "../runtime-config.ts";
 
 import { mkdirSync } from "node:fs";
 import type { OutboundDelivery } from "../delivery/service.ts";
 
-import { createAgentSession, SessionManager, Settings, type CustomTool } from "@gajae-code/coding-agent";
-import { AgentRegistry } from "@gajae-code/coding-agent/registry/agent-registry";
-import { Type } from "@gajae-code/coding-agent/extensibility/typebox";
+import type { CustomTool } from "./tool-types.ts";
+import { Type } from "./tool-types.ts";
+import { createOmoServices, ensureOmoAgentDir, openOmoSession, resolveModel } from "./omo-runtime.ts";
 
+import { dataPaths } from "../paths.ts";
 import { browserProfileEnforcer } from "../browser/enforce.ts";
 import { ORIENTATION_SEPARATOR } from "../persona/orientation.ts";
 import { loadRuntimeBlock, loadSoul } from "../persona/soul.ts";
@@ -18,15 +18,15 @@ import { isSafeOwnerText } from "./owner-text.ts";
 export { OWNER_SILENT_MARKER, isSafeOwnerText, type OwnerTextSafetyOptions } from "./owner-text.ts";
 export { createChildNudgeTool, createChildStatusTool } from "./child-tools.ts";
 
-export const MAIN_SESSION_FILE_META = "sdk.main_session.file";
-export const MAIN_SESSION_ID_META = "sdk.main_session.id";
+export const MAIN_SESSION_FILE_META = "omo.main_session.file";
+export const MAIN_SESSION_ID_META = "omo.main_session.id";
 export const DEFAULT_MAIN_TURN_WATCHDOG_MS = RUNTIME_DEFAULT_MAIN_TURN_WATCHDOG_MS;
 const DEFAULT_ABORT_GRACE_MS = 5_000;
 
 /**
- * Base64 image payload accepted by the SDK's prompt options. Declared locally
- * because `@gajae-code/ai/core` is bundled inside the coding-agent package and
- * is not separately resolvable from this project.
+ * Base64 image payload accepted by the engine's prompt options. Declared
+ * locally because the engine's own image type is bundled inside the package
+ * and is not separately resolvable from this project.
  */
 export interface PromptImage {
   readonly type: "image";
@@ -92,7 +92,8 @@ export interface MainAgentSession {
   steer?(text: string, images?: PromptImage[]): Promise<void>;
   subscribe?(listener: (event: unknown) => void): () => void;
   abort?(options?: { readonly timeoutMs?: number }): Promise<void> | void;
-  dispose?(): Promise<void>;
+  /** Synchronous on the engine session; a fake may return a promise. */
+  dispose?(): Promise<void> | void;
   readonly model?: { readonly id?: string; readonly provider?: string; readonly compat?: { readonly supportsServiceTier?: boolean } };
   isFastModeActive?(): boolean;
 }
@@ -167,7 +168,7 @@ export interface PersistedOwnerReply {
   readonly childId?: string;
 }
 
-export const MAIN_SESSION_OWNER_REPLIES_META = "sdk.main_session.owner_replies";
+export const MAIN_SESSION_OWNER_REPLIES_META = "omo.main_session.owner_replies";
 const MAX_PERSISTED_OWNER_REPLIES = 100;
 const MAX_PERSISTED_OWNER_REPLY_BYTES = 64 * 1024;
 
@@ -241,7 +242,7 @@ export interface MainTurnFinished {
 }
 
 /**
- * Opens the one durable main transcript recorded in StateStore. The SDK owns
+ * Opens the one durable main transcript recorded in StateStore. The omo engine owns
  * automatic compaction; the M0 `session.compact` control verb remains the
  * manual path, rather than adding a second bespoke compactor here.
  */
@@ -255,7 +256,7 @@ export async function openMainSession(options: OpenMainSessionOptions): Promise<
   try {
     persistSessionIdentity(options.store, session);
   } catch (error) {
-    await session.dispose?.().catch(() => undefined);
+    await Promise.resolve(session.dispose?.()).catch(() => undefined);
     throw error;
   }
   return new MainSession({
@@ -311,7 +312,7 @@ export interface MainSessionOptions {
   readonly onOwnerReply?: (input: OwnerReplyInput) => void;
 }
 
-/** Serializes every owner and receipt follow-up turn through one SDK session. */
+/** Serializes every owner and receipt follow-up turn through one omo engine session. */
 export class MainSession {
   private readonly watchdogMs: number;
   private readonly abortGraceMs: number;
@@ -365,7 +366,7 @@ export class MainSession {
     return this.active ?? this.continuation?.active;
   }
 
-  /** Current context usage as reported by the SDK, if available. */
+  /** Current context usage as reported by the omo engine, if available. */
   public contextUsage(): { readonly tokens: number | null; readonly percent: number | null } | undefined {
     const usage = this.session.getContextUsage?.();
     return usage ? { tokens: usage.tokens, percent: usage.percent } : undefined;
@@ -410,12 +411,12 @@ export class MainSession {
     return this.fastModeAvailable && this.session.isFastModeActive?.() === true;
   }
 
-  /** Exposes the SDK transcript for Chat history and durable replay checks. */
+  /** Exposes the omo engine transcript for Chat history and durable replay checks. */
   public get messages(): unknown {
     return this.session.messages;
   }
 
-  /** Returns the owner turn currently consuming the SDK run, if any. */
+  /** Returns the owner turn currently consuming the omo engine run, if any. */
   public currentOwnerTurnId(): string | undefined {
     const active = this.active ?? this.continuation?.active;
     return active?.owner ? active.turnId : undefined;
@@ -521,8 +522,8 @@ export class MainSession {
   }
 
   /**
-   * Injects owner text into the SDK's live run. A queued owner box absorbs the
-   * text synchronously; otherwise an arm is installed before calling the SDK so
+   * Injects owner text into the omo engine's live run. A queued owner box absorbs the
+   * text synchronously; otherwise an arm is installed before calling the omo engine so
    * every continuation event has an owner context even when it starts early.
    */
   public async steer(input: MainTurnInput): Promise<SteerOutcome> {
@@ -574,7 +575,7 @@ export class MainSession {
     }
   }
 
-  /** Recreates the SDK session over the same transcript. */
+  /** Recreates the omo engine session over the same transcript. */
   public reload(): Promise<void> {
     return this.recreate(false);
   }
@@ -598,7 +599,7 @@ export class MainSession {
     const queued = this.queue.then(async () => {
       await this.awaitContinuations();
       const current = this.session;
-      await current.dispose?.().catch(() => undefined);
+      await Promise.resolve(current.dispose?.()).catch(() => undefined);
       const sessionFile = fresh ? undefined : (current.sessionFile ?? this.options.store.getMeta(MAIN_SESSION_FILE_META));
       const next = await this.options.factory.create({
         workingDirectory: this.options.workingDirectory,
@@ -654,7 +655,7 @@ export class MainSession {
     this.sessionEventUnsubscribe = undefined;
     let disposeError: unknown;
     await Promise.race([
-      (this.session.dispose?.() ?? Promise.resolve()).catch((error) => { disposeError = error; }),
+      Promise.resolve(this.session.dispose?.()).catch((error) => { disposeError = error; }),
       new Promise<void>((resolve) => setTimeout(resolve, this.abortGraceMs)),
     ]);
     if (disposeError !== undefined) {
@@ -920,7 +921,7 @@ export class MainSession {
       return;
     }
 
-    await timedOutSession.dispose?.().catch(() => undefined);
+    await Promise.resolve(timedOutSession.dispose?.()).catch(() => undefined);
     const sessionFile = timedOutSession.sessionFile ?? this.options.store.getMeta(MAIN_SESSION_FILE_META);
     const next = await this.options.factory.create({
       workingDirectory: this.options.workingDirectory,
@@ -1095,7 +1096,7 @@ export class MainSession {
   }
 }
 
-export interface SdkMainSessionFactoryOptions {
+export interface OmoMainSessionFactoryOptions {
   readonly persona: () => {
     readonly ownerHandle?: string;
     readonly imessage: "attached" | "detached";
@@ -1105,60 +1106,48 @@ export interface SdkMainSessionFactoryOptions {
   readonly chromeProfile: string;
   readonly delegateBackground: DelegateBackground;
   readonly sendImage: SendImage;
-  /** Resolved after extensions load; never rely on the SDK's stale built-in default. */
+  /** Resolved after extensions load; never rely on the engine's stale built-in default. */
   readonly modelPattern: string;
   readonly customTools?: readonly CustomTool[];
+  /** Root of the daemon's data directory; tests point it at a temporary dir. */
+  readonly omoRoot?: string;
 }
 
-/** SDK adapter used by the running daemon; test fakes implement MainSessionFactory. */
-export class SdkMainSessionFactory implements MainSessionFactory {
-  public readonly agentRegistry = new AgentRegistry();
-  private sessionSequence = 0;
-
-  public constructor(private readonly options: SdkMainSessionFactoryOptions) {}
+/** Engine adapter used by the running daemon; test fakes implement MainSessionFactory. */
+export class OmoMainSessionFactory implements MainSessionFactory {
+  public constructor(private readonly options: OmoMainSessionFactoryOptions) {}
 
   public async create(input: MainSessionFactoryInput): Promise<MainAgentSession> {
-    const sessionSequence = ++this.sessionSequence;
-    const agentId = `openinstinct-main-${sessionSequence}-${randomUUID()}`;
-    const settings = Settings.isolated({ "irc.enabled": false, "irc.sidebar.enabled": false });
-    const manager = input.sessionFile === undefined
-      ? SessionManager.create(input.workingDirectory)
-      : await SessionManager.open(input.sessionFile);
-    const { session } = await createAgentSession({
-      settings,
-      agentRegistry: this.agentRegistry,
-      agentId,
-      agentDisplayName: `OpenInstinct main ${sessionSequence}`,
-      agentRosterLabel: `main-${sessionSequence}`,
-      discoverableToolAllowedNames: [],
+    const persona = this.options.persona();
+    const agent = ensureOmoAgentDir(this.options.omoRoot ?? dataPaths().root);
+    const services = await createOmoServices({
       cwd: input.workingDirectory,
-      sessionManager: manager,
-      modelPattern: this.options.modelPattern,
+      agentDir: agent.dir,
+      appendSystemPrompt: [
+        loadSoul(undefined, { ownerName: this.options.ownerName }).text,
+        loadRuntimeBlock({ ...persona, ownerName: this.options.ownerName ?? "", chromeProfile: this.options.chromeProfile }).text,
+      ],
+      extensions: [{
+        name: "openinstinct-main-enforcer",
+        factory: browserProfileEnforcer(this.options.chromeProfile, { guardBash: true, maxToolCallsPerTurn: 6, forbiddenRoot: dirname(this.options.chromeProfile) }),
+      }],
+    });
+    const resolved = await resolveModel(services, this.options.modelPattern);
+    // Steering mode "all" (a burst of owner texts drains as one steer) and
+    // daemon-driven compaction at 50% instead of the engine's ~70% default are
+    // set by openOmoSession.
+    const session = await openOmoSession({
+      services,
+      cwd: input.workingDirectory,
+      sessionDir: agent.sessions,
+      ...(input.sessionFile === undefined ? {} : { sessionFile: input.sessionFile }),
+      model: resolved.model,
       customTools: [
         createDelegateBackgroundTool(this.options.delegateBackground),
         createSendImageTool(this.options.sendImage),
         ...(this.options.customTools ?? []),
       ],
-      enableLsp: false,
-      extensions: [browserProfileEnforcer(this.options.chromeProfile, { guardBash: true, maxToolCallsPerTurn: 6, forbiddenRoot: dirname(this.options.chromeProfile) })],
-      systemPrompt: (defaults) => {
-        const persona = this.options.persona();
-        return [
-          ...defaults,
-          loadSoul(undefined, { ownerName: this.options.ownerName }).text,
-          loadRuntimeBlock({ ...persona, ownerName: this.options.ownerName ?? "", chromeProfile: this.options.chromeProfile }).text,
-        ];
-      },
     });
-    // Steers wait for the in-flight tool call to finish (aborting mid-click
-    // left browser flows half-done), but a burst of owner texts drains as one
-    // steer instead of one-at-a-time.
-    const steerable = session as unknown as { setInterruptMode?: (m: "immediate" | "wait") => void; setSteeringMode?: (m: "all" | "one-at-a-time") => void };
-    steerable.setInterruptMode?.("wait");
-    steerable.setSteeringMode?.("all");
-    // Compaction is driven by the daemon at 50% (main.ts maybeCompact), not
-    // by the SDK's ~70% default.
-    (session as unknown as { setAutoCompactionEnabled?: (on: boolean) => void }).setAutoCompactionEnabled?.(false);
     return session as unknown as MainAgentSession;
   }
 }
@@ -1167,8 +1156,6 @@ export function createDelegateBackgroundTool(delegateBackground: DelegateBackgro
   return {
     name: "delegate_background",
     label: "Delegate Background",
-    strict: true,
-    concurrency: "shared",
     description: "Start a self-contained background task for slow work. Returns immediately with its child id; tell the owner it is underway.",
     parameters: Type.Object({
       title: Type.String({ minLength: 1, maxLength: 160 }),
@@ -1192,8 +1179,6 @@ export function createSendImageTool(sendImage: SendImage): CustomTool {
   return {
     name: "send_image",
     label: "Send Image",
-    strict: true,
-    concurrency: "shared",
     description: "Send an image file from disk to the owner (Chat window, and iMessage when it is connected)",
     parameters: Type.Object({
       filePath: Type.String({ minLength: 1, maxLength: 4_096 }),
@@ -1222,7 +1207,7 @@ export function visibleTurnFailure(result: Extract<MainTurnResult, { readonly ki
 
 function persistSessionIdentity(store: StateStore, session: MainAgentSession): void {
   if (!session.sessionFile || !session.sessionId) {
-    throw new Error("persistent main SDK session did not expose a session file and id");
+    throw new Error("persistent main omo engine session did not expose a session file and id");
   }
   store.setMeta(MAIN_SESSION_FILE_META, session.sessionFile);
   store.setMeta(MAIN_SESSION_ID_META, session.sessionId);

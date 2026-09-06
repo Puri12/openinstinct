@@ -7,7 +7,7 @@ import {
   DEFAULT_CHILD_INTERIM_RATE_PER_MINUTE,
 } from "../runtime-config.ts";
 import type { InterimBatchRecord, StateStore } from "../store/index.ts";
-import type { MainTurnInput, MainTurnResult } from "../sdk-session/main-session.ts";
+import type { MainTurnInput, MainTurnResult } from "../omo-session/main-session.ts";
 import { truncateUtf8, utf8Bytes } from "./utf8.ts";
 
 export interface InterimTurnDelivery {

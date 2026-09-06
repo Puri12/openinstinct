@@ -8,7 +8,7 @@ import type { BootstrapProbes } from "../src/bootstrap/states.ts";
 import type { DeliveryPort, DeliveryReceipt } from "../src/delivery/port.ts";
 import { startDaemon } from "../src/main.ts";
 import { dataPaths } from "../src/paths.ts";
-import type { MainAgentSession, MainSessionFactory } from "../src/sdk-session/main-session.ts";
+import type { MainAgentSession, MainSessionFactory } from "../src/omo-session/main-session.ts";
 import { bindChatCursor } from "../src/imessage/reader.ts";
 import { openStateStore } from "../src/store/index.ts";
 
@@ -378,7 +378,7 @@ describe("agentic turn streaming", () => {
 
 describe("watchdog", () => {
   test("is an inactivity timer: a long turn that keeps streaming is not killed", async () => {
-    const { MainSession } = await import("../src/sdk-session/main-session.ts");
+    const { MainSession } = await import("../src/omo-session/main-session.ts");
     const root = mkdtempSync(join(tmpdir(), "openinstinct-watchdog-"));
     directories.push(root);
     const store = openStateStore(join(root, "state.db"));
@@ -449,7 +449,7 @@ describe("auto compaction", () => {
 
 describe("owner text during an internal turn", () => {
   test("is steered into the running turn and that turn starts streaming to the owner", async () => {
-    const { MainSession } = await import("../src/sdk-session/main-session.ts");
+    const { MainSession } = await import("../src/omo-session/main-session.ts");
     const root = mkdtempSync(join(tmpdir(), "openinstinct-internal-steer-"));
     directories.push(root);
     const store = openStateStore(join(root, "state.db"));

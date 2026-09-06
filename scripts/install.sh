@@ -41,22 +41,6 @@ cleanup() {
 trap cleanup 0
 trap 'exit 1' 1 2 15
 
-model_catalog_valid() {
-  found=0
-  for catalog in "$library_stage"/node_modules/.bun/@gajae-code+ai@*/node_modules/@gajae-code/ai/src/models.json; do
-    [ -f "$catalog" ] || continue
-    found=1
-    [ -s "$catalog" ] || return 1
-    "$bun_path" -e '
-      const catalog = await Bun.file(process.argv[1]).json();
-      if (catalog === null || Array.isArray(catalog) || typeof catalog !== "object") {
-        process.exit(1);
-      }
-    ' "$catalog" >/dev/null || return 1
-  done
-  [ "$found" -eq 1 ]
-}
-
 case "$bun_path" in
   /*) ;;
   *) printf '%s\n' "bun must resolve to an absolute path" >&2; exit 1 ;;
@@ -72,17 +56,10 @@ rm -rf "$library_stage/daemon/node_modules"
   cd "$library_stage"
   "$bun_path" install --frozen-lockfile --production
 )
-if ! model_catalog_valid; then
-  rm -rf "$library_stage/node_modules" "$library_stage/daemon/node_modules"
-  (
-    cd "$library_stage"
-    "$bun_path" install --force --frozen-lockfile --production
-  )
-fi
-model_catalog_valid || {
-  printf '%s\n' "installed AI package has no valid model catalog; existing daemon was left untouched" >&2
+if [ ! -f "$library_stage/daemon/node_modules/@code-yeongyu/senpi/package.json" ]; then
+  printf '%s\n' "installed engine package is missing; existing daemon was left untouched" >&2
   exit 1
-}
+fi
 # Wait (up to ~5 s) for every process matching a pattern to exit. bootout and
 # pkill return before the process is gone; replacing a bundle while its old
 # binary is still mapped is how a "stale" panel or a launchd respawn of the
@@ -120,8 +97,8 @@ if ! cmp -s "$bun_path" "$binary"; then
   chmod 700 "$binary.new"
   mv -f "$binary.new" "$binary"
 fi
-# gjc: the exact SDK version, owned by OpenInstinct, isolated state dir.
-sh "$repo_root/scripts/install-gjc.sh" "$repo_root" "${OI_GJC_PAYLOAD:-}"
+# One-time import of host omo engine state into ~/.openinstinct/omo.
+sh "$repo_root/scripts/install-omo-state.sh" "$repo_root"
 # Presence helper (typing / read receipts). Prebuilt in the payload, or built here.
 if [ -x "$repo_root/presence/.build/release/oi-presence" ]; then
   cp "$repo_root/presence/.build/release/oi-presence" "$state_home/bin/oi-presence.new"
@@ -133,7 +110,7 @@ if [ -f "$state_home/bin/oi-presence.new" ]; then
   chmod 755 "$state_home/bin/oi-presence.new"
   mv -f "$state_home/bin/oi-presence.new" "$state_home/bin/oi-presence"
 fi
-# `gjc` (vendored) is a `#!/usr/bin/env bun` shim; expose our runtime as `bun`.
+# The daemon's bun runtime is exposed as bin/bun for tools that spawn "bun".
 ln -sf "$binary" "$state_home/bin/bun"
 "$bun_path" "$repo_root/scripts/render-plist.ts" "$home_dir" "$plist"
 plutil -lint "$plist"

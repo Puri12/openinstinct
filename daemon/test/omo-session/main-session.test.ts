@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -7,15 +7,47 @@ import {
   MAIN_SESSION_FILE_META,
   MAIN_SESSION_ID_META,
   MainSession,
+  OmoMainSessionFactory,
   createSendImageTool,
   openMainSession,
   type MainAgentSession,
   type ActiveTurn,
   type MainSessionFactory,
   visibleTurnFailure,
-} from "../../src/sdk-session/main-session.ts";
+} from "../../src/omo-session/main-session.ts";
+import { ensureOmoAgentDir } from "../../src/omo-session/omo-runtime.ts";
+import { Type, type CustomTool } from "../../src/omo-session/tool-types.ts";
 import { ORIENTATION_SEPARATOR } from "../../src/persona/orientation.ts";
 import { openStateStore, type StateStore } from "../../src/store/index.ts";
+
+/** Offline provider so a real engine session can be created without network. */
+const OFFLINE_PROVIDER = {
+  providers: {
+    "oi-test": {
+      name: "OI Test",
+      baseUrl: "http://127.0.0.1:1/v1",
+      apiKey: "test-key",
+      api: "openai-completions",
+      models: [{
+        id: "oi-model",
+        name: "OI Model",
+        reasoning: false,
+        input: ["text"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 200_000,
+        maxTokens: 8_192,
+      }],
+    },
+  },
+};
+
+const extraTool: CustomTool = {
+  name: "extra_tool",
+  label: "Extra Tool",
+  description: "Stands in for the daemon's own tool list passed through the factory options.",
+  parameters: Type.Object({}, { additionalProperties: false }),
+  execute: async () => ({ content: [{ type: "text", text: "ok" }], details: {} }),
+};
 
 const directories: string[] = [];
 
@@ -1070,7 +1102,7 @@ test("C9 never lets an owner prompt's own user event consume an armed steer", as
     expect(inRunStarted[0]?.kind).toBe("prompt");
     expect(inRunStarted[0]?.initialUserPending).toBe(1);
 
-    // A steer admitted in that window arms the continuation before the SDK emits anything.
+    // A steer admitted in that window arms the continuation before the omo engine emits anything.
     await expect(inRunMain.steer({ text: "steer", owner: true, turnId: "t1" })).resolves.toEqual({ kind: "admitted" });
     expect(continuationState(inRunMain)?.pendingIds).toEqual(["t1"]);
 
@@ -1200,7 +1232,7 @@ test("C10 never lets an internal prompt's own user event promote an armed steer"
     store.close();
   }
 });
-test("steer outcomes: a queued owner box absorbs steers without an SDK call", async () => {
+test("steer outcomes: a queued owner box absorbs steers without an engine call", async () => {
   const { store, root } = createStore();
   const session = new FakeAgentSession({ promptBoundaries: ["first output"] });
   const promptEndGate = new Deferred<void>();
@@ -1220,14 +1252,14 @@ test("steer outcomes: a queued owner box absorbs steers without an SDK call", as
     const second = main.turn({ text: "second", owner: true, turnId: "second" });
     await expect(main.steer({ text: "s1", owner: true, turnId: "t1" })).resolves.toEqual({ kind: "admitted" });
     await expect(main.steer({ text: "s2", owner: true, turnId: "t2" })).resolves.toEqual({ kind: "admitted" });
-    // Absorbed by the queued box: no SDK steer yet, and no continuation armed.
+    // Absorbed by the queued box: no engine steer yet, and no continuation armed.
     expect(session.steerCalls).toEqual([]);
     expect(continuationState(main)).toBeUndefined();
 
     promptEndGate.resolve();
     await first;
     await second;
-    // Injected as two distinct ordered SDK steers, never concatenated.
+    // Injected as two distinct ordered engine steers, never concatenated.
     expect(session.steerCalls).toEqual(["s1", "s2"]);
   } finally {
     await main.stop();
@@ -1310,14 +1342,56 @@ test("activeTurn.transcriptIndex equals the message count at prompt time", async
     store.close();
   }
 });
+test("the engine factory opens a session on the daemon's own agent dir with its tools and persona", async () => {
+  // Given: an isolated ~/.openinstinct root whose only provider is an offline fake
+  const root = mkdtempSync(join(tmpdir(), "openinstinct-main-factory-"));
+  directories.push(root);
+  const agent = ensureOmoAgentDir(root);
+  writeFileSync(agent.modelsJson, JSON.stringify(OFFLINE_PROVIDER), { mode: 0o600 });
+  const workingDirectory = join(root, "session");
+  mkdirSync(workingDirectory, { recursive: true, mode: 0o700 });
+  const factory = new OmoMainSessionFactory({
+    persona: () => ({ ownerHandle: "+821012345678", imessage: "attached" }),
+    ownerName: "Owner Name",
+    chromeProfile: join(root, "chrome-profile"),
+    modelPattern: "oi-test/oi-model",
+    delegateBackground: () => ({ id: "unused" }),
+    sendImage: () => ({ kind: "queued", deliveryId: "unused" }),
+    customTools: [extraTool],
+    omoRoot: root,
+  });
+
+  // When: the daemon asks for its one main session
+  const session = await factory.create({ workingDirectory });
+
+  try {
+    // Then: the transcript lives under the daemon's engine dir, and the session
+    // carries the daemon's tools, the enforcer's browser surface, and the persona.
+    expect(session.sessionFile?.startsWith(agent.sessions)).toBe(true);
+    expect(typeof session.sessionId).toBe("string");
+    const engine = session as unknown as { getActiveToolNames(): readonly string[]; systemPrompt: string };
+    const tools = engine.getActiveToolNames();
+    expect(tools).toContain("delegate_background");
+    expect(tools).toContain("send_image");
+    expect(tools).toContain("extra_tool");
+    expect(tools).toContain("mcp_browser_navigate_page");
+    expect(tools).not.toContain("eval");
+    expect(tools).not.toContain("schedule_wakeup");
+    expect(engine.systemPrompt).toContain("Owner Name");
+    expect(engine.systemPrompt).toContain("+821012345678");
+    expect(session.model?.provider).toBe("oi-test");
+  } finally {
+    await Promise.resolve(session.dispose?.());
+  }
+});
 test("the send_image tool reports queued and chat-only outcomes distinctly", async () => {
   const queuedTool = createSendImageTool(() => ({ kind: "queued", deliveryId: "delivery-1" }));
-  const queued = await queuedTool.execute("call-1", { filePath: "/tmp/a.png", caption: "a picture" }, undefined, {} as never);
+  const queued = await queuedTool.execute("call-1", { filePath: "/tmp/a.png", caption: "a picture" }, undefined, undefined, {} as never);
   expect(JSON.stringify(queued.content)).toContain("Image queued for delivery as delivery-1");
   expect(queued.details).toEqual({ kind: "queued", deliveryId: "delivery-1" });
 
   const chatOnlyTool = createSendImageTool(() => ({ kind: "chat_only" }));
-  const chatOnly = await chatOnlyTool.execute("call-2", { filePath: "/tmp/b.png", caption: "b picture" }, undefined, {} as never);
+  const chatOnly = await chatOnlyTool.execute("call-2", { filePath: "/tmp/b.png", caption: "b picture" }, undefined, undefined, {} as never);
   expect(JSON.stringify(chatOnly.content)).toContain("iMessage is not connected");
   expect(chatOnly.details).toEqual({ kind: "chat_only" });
 });

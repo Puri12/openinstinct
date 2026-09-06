@@ -1,13 +1,13 @@
-// Must be the first import: the SDK injects its own auto-imported provider
+// Must be the first import: the omo engine injects its own auto-imported provider
 // credentials into process.env at module evaluation, and the owner's
 // ~/.openinstinct/env has to win over them.
 import { ENV_FILE } from "./env-bootstrap.ts";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { ensureChrome } from "./browser/chrome.ts";
 import { createSystemProbes, openChatDbReadonly } from "./bootstrap/probes.ts";
 
 import { BootstrapMachine, type BootstrapProbes, type BootstrapSnapshot } from "./bootstrap/states.ts";
@@ -21,10 +21,10 @@ import { ChildRegistry } from "./children/registry.ts";
 import { ReceiptInbox } from "./children/receipts.ts";
 import { InterimInbox } from "./children/interim.ts";
 import {
-  SdkInProcessRunner,
+  OmoInProcessRunner,
   type ChildSessionFactory,
-} from "./children/runners/sdk-inprocess.ts";
-import { SdkConversationRunner } from "./children/runners/sdk-conversation.ts";
+} from "./children/runners/omo-inprocess.ts";
+import { OmoConversationRunner } from "./children/runners/omo-conversation.ts";
 import type { ChildRunner } from "./children/runner.ts";
 import type { ConversationalChildRunner } from "./children/conversation.ts";
 import { TerminalJournal } from "./children/terminal-journal.ts";
@@ -96,12 +96,12 @@ import {
   createChildStatusTool,
   MainSession,
   openMainSession,
-  SdkMainSessionFactory,
+  OmoMainSessionFactory,
   type ActiveTurn,
   type MainSessionFactory,
   type PromptImage,
   type SendImageOutcome,
-} from "./sdk-session/main-session.ts";
+} from "./omo-session/main-session.ts";
 
 import { openStateStore, type StateStore } from "./store/index.ts";
 
@@ -139,9 +139,9 @@ export interface DaemonOptions {
   readonly reprobeIntervalMs?: number;
   readonly chatDbPath?: string;
   readonly sender?: DeliveryPort;
-  /** Test seam; production uses SdkMainSessionFactory with shared ~/.gjc auth. */
+  /** Test seam; production uses OmoMainSessionFactory on the omo engine state under ~/.openinstinct/omo. */
   readonly mainSessionFactory?: MainSessionFactory;
-  /** Test seam; production uses SDK in-process sessions for daemon maintenance children. */
+  /** Test seam; production uses omo engine in-process sessions for daemon maintenance children. */
   readonly childRunner?: ChildRunner;
   readonly daemonRunner?: ChildRunner;
   readonly conversationRunner?: ConversationalChildRunner;
@@ -225,7 +225,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonRu
     core === undefined || closing ? undefined : { session: core.session, memory: core.memory }
   );
 
-  // Compaction policy is ours, not gjc's default (~70%): a chat agent that
+  // Compaction policy is ours, not the engine's default (~70%): a chat agent that
   // runs for weeks should compact early and often. Fires after a turn settles.
   const COMPACT_AT_PERCENT = 50;
   let compacting = false;
@@ -238,12 +238,12 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonRu
       return;
     }
     compacting = true;
-    logger.write("info", "sdk_session", "auto_compact_started", { percent: usage.percent, tokens: usage.tokens });
+    logger.write("info", "omo_session", "auto_compact_started", { percent: usage.percent, tokens: usage.tokens });
     try {
       await active.compact();
-      logger.write("info", "sdk_session", "auto_compact_finished", {});
+      logger.write("info", "omo_session", "auto_compact_finished", {});
     } catch (error) {
-      logger.write("warn", "sdk_session", "auto_compact_failed", { message: messageOf(error) });
+      logger.write("warn", "omo_session", "auto_compact_failed", { message: messageOf(error) });
     } finally {
       compacting = false;
     }
@@ -466,8 +466,8 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonRu
       getStatus: () => bootstrap.snapshot,
       getStatusContext: (): ControlStatusContext => ({
         sessionState: store.getMeta(DAEMON_SESSION_ACTIVE_META) === "true" ? "active" : "inactive",
-        ...(store.getMeta("sdk.main_session.id") === undefined ? {} : { mainSessionId: store.getMeta("sdk.main_session.id")! }),
-        mainSessionFilePresent: store.getMeta("sdk.main_session.file") !== undefined,
+        ...(store.getMeta("omo.main_session.id") === undefined ? {} : { mainSessionId: store.getMeta("omo.main_session.id")! }),
+        mainSessionFilePresent: store.getMeta("omo.main_session.file") !== undefined,
         ...(configuredHandle === undefined ? {} : { allowlistHandle: configuredHandle }),
         imessage: imessage === undefined
           ? {
@@ -541,13 +541,8 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonRu
           return { restarting: true };
         },
         openBrowser: async () => {
-          const chrome = process.env.PUPPETEER_EXECUTABLE_PATH ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-          if (!existsSync(chrome)) {
-            throw new Error("Google Chrome is not installed at /Applications; install it or set PUPPETEER_EXECUTABLE_PATH in ~/.openinstinct/env");
-          }
-          mkdirSync(paths.chromeProfile, { recursive: true });
-          Bun.spawn([chrome, `--user-data-dir=${paths.chromeProfile}`, "--profile-directory=Default", "--no-first-run", "--no-default-browser-check", "--new-window", "about:blank"], { stdout: "ignore", stderr: "ignore" });
-          logger.write("info", "browser", "profile_opened_for_owner", { profile: paths.chromeProfile });
+          const { launched, url } = await ensureChrome({ profile: paths.chromeProfile, headless: false });
+          logger.write("info", "browser", "profile_opened_for_owner", { profile: paths.chromeProfile, launched, url });
           return { opened: true, profile: paths.chromeProfile };
         },
       },
@@ -599,7 +594,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonRu
           const admitted = lane.session.admitOwnerReply({ idempotencyKey: `notify:${randomUUID()}`, text: reply });
           return { delivered: admitted.id.length > 0, ...(admitted.id.length === 0 ? {} : { deliveryId: admitted.id }), reply } as unknown as JsonObject;
         } catch (error) {
-          logger.write("warn", "sdk_session", "session_notify_delivery_failed", { message: messageOf(error) });
+          logger.write("warn", "omo_session", "session_notify_delivery_failed", { message: messageOf(error) });
           return { delivered: false, reply } as unknown as JsonObject;
         }
       },
@@ -609,8 +604,8 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonRu
           throw new Error("main session is not running");
         }
         await lane.session.reset();
-        logger.write("info", "sdk_session", "session_reset", { sessionId: store.getMeta("sdk.main_session.id") });
-        return { reset: true, sessionId: store.getMeta("sdk.main_session.id") ?? "" };
+        logger.write("info", "omo_session", "session_reset", { sessionId: store.getMeta("omo.main_session.id") });
+        return { reset: true, sessionId: store.getMeta("omo.main_session.id") ?? "" };
       },
       onSessionReload: async () => {
         const lane = core;
@@ -619,7 +614,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonRu
         }
         await lane.session.reload();
         const soul = loadSoul();
-        logger.write("info", "sdk_session", "session_reloaded", { soulVersion: soul.version });
+        logger.write("info", "omo_session", "session_reloaded", { soulVersion: soul.version });
         return { reloaded: true, soulVersion: soul.version };
       },
       onMaintenanceRun: () => {
@@ -647,9 +642,9 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonRu
     }
     try {
       await lane.session.reload();
-      logger.write("info", "sdk_session", "session_reloaded", { trigger: "imessage_lane" });
+      logger.write("info", "omo_session", "session_reloaded", { trigger: "imessage_lane" });
     } catch (error) {
-      logger.write("warn", "sdk_session", "session_reload_failed", { trigger: "imessage_lane", message: messageOf(error) });
+      logger.write("warn", "omo_session", "session_reload_failed", { trigger: "imessage_lane", message: messageOf(error) });
     }
   }
 
@@ -685,7 +680,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonRu
       const lane = core;
       if (lane !== undefined) {
         await lane.session.reload();
-        logger.write("info", "sdk_session", "session_reloaded", { trigger: "owner_handle" });
+        logger.write("info", "omo_session", "session_reloaded", { trigger: "owner_handle" });
       }
       const count = store.expirePendingDeliveriesForHandle(oldHandle, {
         code: "handle_retired",
@@ -898,14 +893,14 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonRu
       statusReader = new StateStoreChildStatusReader(store);
       const taskRunner = options.childRunner ?? (drillMode
         ? new DrillChildRunner()
-        : new SdkInProcessRunner({
+        : new OmoInProcessRunner({
           root: paths.children,
           modelPattern: runtimeConfig.mainSessionModel,
           ...(options.childSessionFactory === undefined ? {} : { factory: options.childSessionFactory }),
         }));
       const conversation = options.conversationRunner ?? (drillMode
         ? new DrillConversationRunner()
-        : new SdkConversationRunner({
+        : new OmoConversationRunner({
           root: paths.children,
           modelPattern: runtimeConfig.mainSessionModel,
           ...(options.childSessionFactory === undefined ? {} : { factory: options.childSessionFactory }),
@@ -1017,7 +1012,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonRu
       ];
       const factory = options.mainSessionFactory ?? (drillMode
         ? new DrillMainSessionFactory({ customTools })
-        : new SdkMainSessionFactory({
+        : new OmoMainSessionFactory({
           persona: () => ({ ownerHandle: outbox.handle, imessage: outbox.attached ? "attached" : "detached" }),
           ownerName: runtimeConfig.ownerName,
           chromeProfile: paths.chromeProfile,
@@ -1045,11 +1040,11 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonRu
           });
         },
         watchdogMs: options.turnWatchdogMs ?? runtimeConfig.mainTurnWatchdogMs,
-        onEvent: (event, fields) => logger.write("info", "sdk_session", event, fields),
+        onEvent: (event, fields) => logger.write("info", "omo_session", event, fields),
         onFastModeRejected: async () => {
           await settingsService.disableFastMode();
           store.setMeta(DAEMON_FAST_MODE_ENABLED_META, "false");
-          logger.write("warn", "sdk_session", "fast_mode_auto_disabled", {
+          logger.write("warn", "omo_session", "fast_mode_auto_disabled", {
             model: runtimeConfig.mainSessionModel,
             reason: "provider_rejected_priority",
           });
@@ -1108,7 +1103,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonRu
       });
       const interimTurner = {
         get busy(): boolean { return session!.busy; },
-        steer: async (input: import("./sdk-session/main-session.ts").MainTurnInput): Promise<boolean> => (
+        steer: async (input: import("./omo-session/main-session.ts").MainTurnInput): Promise<boolean> => (
           (await session!.steer({
             ...input,
             text: `${OPERATOR_NOTE_PREFIX}, not from the owner] ${input.text}`,
@@ -1119,7 +1114,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonRu
         currentOwnerTurnId: () => session!.currentOwnerTurnId(),
         transcriptContains: (marker: string) => session!.transcriptContains(marker),
         get messages(): unknown { return session!.messages; },
-        admitOwnerReply: (input: import("./sdk-session/main-session.ts").OwnerReplyInput) => session!.admitOwnerReply(input),
+        admitOwnerReply: (input: import("./omo-session/main-session.ts").OwnerReplyInput) => session!.admitOwnerReply(input),
       };
       interim = new InterimInbox({
         store,
@@ -1447,7 +1442,7 @@ function imageMimeOf(attachment: InboundAttachment): string {
 }
 
 /**
- * Turns chat.db attachment rows into SDK image parts. Anything that is not a
+ * Turns chat.db attachment rows into omo engine image parts. Anything that is not a
  * readable image is described in text instead of being silently dropped, so the
  * agent can still tell the owner that something arrived.
  */

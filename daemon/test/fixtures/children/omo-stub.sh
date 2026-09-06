@@ -12,10 +12,10 @@ case "$prompt" in
     ;;
   *HANG*)
     child_pid=""
-    if [ -n "${GJC_STUB_CHILD_PID_FILE:-}" ]; then
+    if [ -n "${OMO_STUB_CHILD_PID_FILE:-}" ]; then
       sleep 300 &
       child_pid=$!
-      printf '%s' "$child_pid" > "$GJC_STUB_CHILD_PID_FILE"
+      printf '%s' "$child_pid" > "$OMO_STUB_CHILD_PID_FILE"
     fi
     trap 'printf "%s\n" "{\"state\":\"cancelled\",\"summary\":\"fixture cancelled\"}"; wait "$child_pid" 2>/dev/null; exit 0' TERM INT
     while :; do sleep 1; done

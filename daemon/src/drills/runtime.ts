@@ -6,8 +6,8 @@ import type { DataPaths } from "../paths.ts";
 import type { ChildConversation, ChildTurnResult, ConversationalChildRunner } from "../children/conversation.ts";
 import type { ChildRunResult, ChildRunner } from "../children/runner.ts";
 import type { DeliveryPort, DeliveryReceipt } from "../delivery/port.ts";
-import type { MainAgentSession, MainSessionFactory, MainSessionFactoryInput } from "../sdk-session/main-session.ts";
-import type { CustomTool } from "@gajae-code/coding-agent";
+import type { MainAgentSession, MainSessionFactory, MainSessionFactoryInput } from "../omo-session/main-session.ts";
+import type { CustomTool } from "../omo-session/tool-types.ts";
 import { holdForDrill } from "./hooks.ts";
 
 /**

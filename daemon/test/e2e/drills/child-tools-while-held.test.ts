@@ -12,8 +12,8 @@ import { DeliveryService } from "../../../src/delivery/service.ts";
 import {
   MainSession,
   type MainSessionFactory,
-} from "../../../src/sdk-session/main-session.ts";
-import { createChildNudgeTool, createChildStatusTool } from "../../../src/sdk-session/child-tools.ts";
+} from "../../../src/omo-session/main-session.ts";
+import { createChildNudgeTool, createChildStatusTool } from "../../../src/omo-session/child-tools.ts";
 import { openStateStore, type StateStore } from "../../../src/store/index.ts";
 
 const directories: string[] = [];

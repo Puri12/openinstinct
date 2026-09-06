@@ -47,7 +47,7 @@ export interface RuntimeConfig {
     readonly toolLatencyGuardMs: number;
   };
   readonly mainTurnWatchdogMs: number;
-  /** SDK model pattern for the main session, e.g. "anthropic/claude-sonnet-4-5". */
+  /** omo engine model pattern for the main session, e.g. "anthropic/claude-sonnet-4-5". */
   readonly mainSessionModel: string;
 }
 

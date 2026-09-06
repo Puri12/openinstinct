@@ -12,7 +12,7 @@ import { recordSuppressedWhilePaused, setDaemonPaused } from "../src/control/pau
 import { bindChatCursor } from "../src/imessage/reader.ts";
 import { startDaemon, type DaemonRuntime } from "../src/main.ts";
 import { dataPaths, type DataPaths } from "../src/paths.ts";
-import type { MainAgentSession, MainSessionFactory, MainSessionFactoryInput } from "../src/sdk-session/main-session.ts";
+import type { MainAgentSession, MainSessionFactory, MainSessionFactoryInput } from "../src/omo-session/main-session.ts";
 import { openStateStore } from "../src/store/index.ts";
 import { requestControl } from "../../scripts/lib/control-client.ts";
 

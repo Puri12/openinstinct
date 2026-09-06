@@ -1,5 +1,4 @@
-import type { CustomTool } from "@gajae-code/coding-agent";
-import { Type } from "@gajae-code/coding-agent/extensibility/typebox";
+import { type CustomTool, Type } from "../omo-session/tool-types.ts";
 
 import { MonitorStore, formatMonitorSchedule } from "./store.ts";
 import type {
@@ -38,8 +37,6 @@ export function createMonitorAuthorTool(store: MonitorStore, options: MonitorAut
   return {
     name: "monitor_author",
     label: "Monitor Author",
-    strict: true,
-    concurrency: "shared",
     description: "Create, update, list, enable, disable, delete, or run durable monitors. The 'run' operation fires a monitor immediately whatever its schedule, including the built-in memory monitors. Cron expressions, IANA time zones, and script/webhook trigger shapes are validated before persistence.",
     parameters: Type.Object({
       operation: Type.Enum(["create", "update", "list", "enable", "disable", "delete", "run"]),

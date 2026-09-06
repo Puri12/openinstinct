@@ -1,5 +1,4 @@
-import type { CustomTool } from "@gajae-code/coding-agent";
-import { Type } from "@gajae-code/coding-agent/extensibility/typebox";
+import { type CustomTool, Type } from "../omo-session/tool-types.ts";
 
 import {
   DEFAULT_CHILD_INTERIM_MAX_BYTES,
@@ -34,8 +33,6 @@ export function createReportProgressTool(options: ReportProgressToolOptions): Cu
   return {
     name: "report_progress",
     label: "Report Progress",
-    strict: true,
-    concurrency: "shared",
     description: "Durably report a material change in this background task. Report sparingly; routine progress should stay silent.",
     parameters: Type.Object({
       text: Type.String({ minLength: 1, maxLength: 4_000 }),

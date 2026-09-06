@@ -3,10 +3,10 @@
 # plus a .sha256 sidecar.
 #
 # The archive is the whole product: the daemon source, its lockfiles, the
-# prebuilt menu-bar panel, the prebuilt presence helper, a bun runtime, and the
-# gjc binary pinned to the vendored SDK. scripts/install-remote.sh fetches it
-# with curl, which never attaches com.apple.quarantine, so nothing here is
-# Gatekeeper-assessed and no code-signing certificate is involved.
+# prebuilt menu-bar panel, the prebuilt presence helper, and a bun runtime.
+# scripts/install-remote.sh fetches it with curl, which never attaches
+# com.apple.quarantine, so nothing here is Gatekeeper-assessed and no
+# code-signing certificate is involved.
 set -eu
 
 script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd)
@@ -52,18 +52,6 @@ cp "$repo_root/panel/Assets/OpenInstinct.icns" "$payload/panel/Assets/"
 # runtime ships with the archive rather than being a prerequisite.
 cp "$(command -v bun)" "$payload/bun"
 chmod 755 "$payload/bun"
-
-# gjc: exactly the version of the vendored SDK, so an install never depends on
-# whatever gjc the host happens to have.
-sdk_version=$(sed -nE 's/.*"@gajae-code\/coding-agent": *"([0-9][^"]*)".*/\1/p' "$repo_root/daemon/package.json" | head -1)
-[ -n "$sdk_version" ] || { echo "cannot read SDK version from daemon/package.json" >&2; exit 1; }
-case "$arch" in
-  arm64) gjc_asset=gjc-darwin-arm64 ;;
-  x86_64) gjc_asset=gjc-darwin-x64 ;;
-  *) echo "unsupported architecture: $arch" >&2; exit 1 ;;
-esac
-curl -fsSL "https://github.com/Yeachan-Heo/gajae-code/releases/download/v$sdk_version/$gjc_asset" -o "$payload/gjc"
-chmod 755 "$payload/gjc"
 
 mkdir -p "$dist"
 out="$dist/$name.tar.gz"

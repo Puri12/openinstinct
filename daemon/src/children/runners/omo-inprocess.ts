@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto";
-import { homedir } from "node:os";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
-import { createAgentSession, SessionManager, Settings, type CustomTool } from "@gajae-code/coding-agent";
-import { AgentRegistry } from "@gajae-code/coding-agent/registry/agent-registry";
 import { browserProfileEnforcer } from "../../browser/enforce.ts";
+import { dataPaths } from "../../paths.ts";
 import { loadSoul } from "../../persona/soul.ts";
+import { createOmoServices, ensureOmoAgentDir, openOmoSession, resolveModel } from "../../omo-session/omo-runtime.ts";
+import type { CustomTool } from "../../omo-session/tool-types.ts";
 import type { ChildRunRequest, ChildRunResult, ChildRunner } from "../runner.ts";
 import { CHILD_REPORTING_INSTRUCTION } from "../report-progress-tool.ts";
 export interface ChildAgentSession {
@@ -21,8 +21,8 @@ export interface ChildAgentSession {
   dispose?(): Promise<void>;
   getLastAssistantText?(): string;
   getContextUsage?(): { readonly tokens: number | null } | undefined;
+  getActiveToolNames?(): readonly string[];
   waitForIdle?(): Promise<void>;
-  setInterruptMode?(mode: "immediate" | "wait"): void;
 }
 
 export interface ChildSessionFactory {
@@ -37,26 +37,26 @@ export interface ChildSessionFactory {
   }): Promise<ChildAgentSession>;
 }
 
-export interface SdkInProcessRunnerOptions {
+export interface OmoInProcessRunnerOptions {
   readonly root: string;
   readonly factory?: ChildSessionFactory;
-  /** Required when no factory is injected: the production SDK child model. */
+  /** Required when no factory is injected: the production omo engine child model. */
   readonly modelPattern?: string;
 }
 
 /**
- * The conversational task-tool runner owns a separate file-backed SDK session
+ * The conversational task-tool runner owns a separate file-backed omo engine session
  * below ~/.openinstinct/children; it never shares the main session object.
  */
-export class SdkInProcessRunner implements ChildRunner {
-  public readonly name = "sdk-inprocess";
+export class OmoInProcessRunner implements ChildRunner {
+  public readonly name = "omo-inprocess";
   private readonly factory: ChildSessionFactory;
 
-  public constructor(private readonly options: SdkInProcessRunnerOptions) {
+  public constructor(private readonly options: OmoInProcessRunnerOptions) {
     if (!options.factory && !options.modelPattern) {
-      throw new Error("SdkInProcessRunner needs modelPattern when using the production SDK factory");
+      throw new Error("OmoInProcessRunner needs modelPattern when using the production omo engine factory");
     }
-    this.factory = options.factory ?? new SdkChildSessionFactory(options.modelPattern!);
+    this.factory = options.factory ?? new OmoChildSessionFactory(options.modelPattern!);
   }
 
   public async run(request: ChildRunRequest, signal: AbortSignal): Promise<ChildRunResult> {
@@ -128,11 +128,9 @@ export class SdkInProcessRunner implements ChildRunner {
   }
 }
 
-export class SdkChildSessionFactory implements ChildSessionFactory {
-  public readonly agentRegistry = new AgentRegistry();
-  private sessionSequence = 0;
-
-  public constructor(private readonly modelPattern: string) {}
+export class OmoChildSessionFactory implements ChildSessionFactory {
+  /** `omoRoot` is the `~/.openinstinct` root that owns the engine state, the Chrome profile, and the paths children may not read. */
+  public constructor(private readonly modelPattern: string, private readonly omoRoot: string = dataPaths().root) {}
 
   public async create(input: {
     readonly childId: string;
@@ -143,55 +141,59 @@ export class SdkChildSessionFactory implements ChildSessionFactory {
     readonly conversational: boolean;
     readonly customTools?: readonly CustomTool[];
   }): Promise<ChildAgentSession> {
-    const sessionSequence = ++this.sessionSequence;
-    const agentId = `openinstinct-child-${input.childId}-${sessionSequence}`;
-    const settings = Settings.isolated({ "irc.enabled": false, "irc.sidebar.enabled": false });
-    let promptHash: string | undefined;
     mkdirSync(input.workingDirectory, { recursive: true, mode: 0o700 });
     mkdirSync(input.sessionDirectory, { recursive: true, mode: 0o700 });
     const tabPrefix = `${input.childId.slice(0, 8)}-`;
-    const manager = input.sessionFile === undefined
-      ? SessionManager.create(input.workingDirectory, input.sessionDirectory)
-      : await SessionManager.open(input.sessionFile);
-    const { session } = await createAgentSession({
-      settings,
-      agentRegistry: this.agentRegistry,
-      agentId,
-      agentDisplayName: `OpenInstinct child ${sessionSequence}`,
-      agentRosterLabel: `child-${input.childId}`,
-      discoverableToolAllowedNames: [],
+    const appendSystemPrompt = childSystemPrompt(input.conversational, tabPrefix);
+    const services = await createOmoServices({
       cwd: input.workingDirectory,
-      sessionManager: manager,
-      modelPattern: this.modelPattern,
-      ...(input.conversational && input.customTools !== undefined ? { customTools: [...input.customTools] } : {}),
-      enableLsp: false,
+      agentDir: ensureOmoAgentDir(this.omoRoot).dir,
+      appendSystemPrompt,
       // Children get a generous but finite budget: a monitor that needs 40 tool calls is doing something wrong.
-      extensions: [browserProfileEnforcer(join(homedir(), ".openinstinct", "chrome-profile"), { forbiddenRoot: join(homedir(), ".openinstinct"), maxToolCallsPerTurn: 40, tabPrefix })],
-      systemPrompt: (defaults) => {
-        const prompt = childSystemPrompt(defaults, input.conversational, tabPrefix);
-        promptHash = hashPrompt(prompt);
-        return prompt;
-      },
+      extensions: [{
+        name: "openinstinct-child-enforcer",
+        factory: browserProfileEnforcer(join(this.omoRoot, "chrome-profile"), { forbiddenRoot: this.omoRoot, maxToolCallsPerTurn: 40, tabPrefix }),
+      }],
     });
-    const steerable = session as unknown as { setInterruptMode?: (mode: "immediate" | "wait") => void };
-    steerable.setInterruptMode?.("wait");
-    const childSession = session as unknown as ChildAgentSession & { promptHash?: string };
-    if (promptHash !== undefined) {
-      childSession.promptHash = promptHash;
-    }
-    return childSession;
+    const resolved = await resolveModel(services, this.modelPattern);
+    const session = await openOmoSession({
+      services,
+      cwd: input.workingDirectory,
+      sessionDir: input.sessionDirectory,
+      ...(input.sessionFile === undefined ? {} : { sessionFile: input.sessionFile }),
+      model: resolved.model,
+      customTools: input.conversational ? input.customTools ?? [] : [],
+    });
+    // The engine session is adapted rather than returned raw: its `dispose()` is
+    // synchronous, and every child call site awaits a promise from it.
+    return {
+      promptHash: hashPrompt(appendSystemPrompt),
+      get sessionFile(): string | undefined { return session.sessionFile; },
+      get messages(): unknown { return session.messages; },
+      prompt: (text) => session.prompt(text),
+      steer: (text) => session.steer(text),
+      subscribe: (listener) => session.subscribe(listener),
+      abort: () => session.abort(),
+      dispose: async () => { session.dispose(); },
+      // The engine's accessor rather than a re-scan of `messages`: it skips aborted empty turns.
+      getLastAssistantText: () => session.getLastAssistantText() ?? "",
+      getContextUsage: () => session.getContextUsage(),
+      getActiveToolNames: () => session.getActiveToolNames(),
+      waitForIdle: () => session.waitForIdle(),
+    };
   }
 }
 
-export function childSystemPrompt(defaults: readonly string[], conversational: boolean, tabPrefix?: string): string[] {
-  const chromeProfile = join(homedir(), ".openinstinct", "chrome-profile");
-  const browserInstruction = tabPrefix === undefined
-    ? `Browser: always pass app: {browser: "chrome", user_data_dir: "${chromeProfile}", background: true, no_focus: true} and reuse the tab named "main"; never use the owner's personal Chrome profile.`
-    : `Browser: always pass app: {browser: "chrome", user_data_dir: "${chromeProfile}", background: true, no_focus: true, cdp_port: 9222}; never use the owner's personal Chrome profile. Other tasks share this browser, so every tab name you use must start with "${tabPrefix}" (e.g. name: "${tabPrefix}main"); close your tabs when you are done.`;
+/**
+ * Appended after the engine's own base prompt. `tabPrefix` is still part of the
+ * child's browser identity (the enforcer takes it), but the MCP browser has
+ * page ids instead of named tabs, so no sentence interpolates it.
+ */
+export function childSystemPrompt(conversational: boolean, _tabPrefix?: string): string[] {
+  const chromeProfile = dataPaths().chromeProfile;
   return [
-    ...defaults,
     loadSoul().text,
-    browserInstruction,
+    `Browser: use the mcp_browser_* tools (navigate_page, take_snapshot, take_screenshot, click, fill, evaluate_script, wait_for, list_pages/new_page/select_page/close_page). They are already attached to Gajae's own persistent Chrome profile at ${chromeProfile}; there is no profile to choose and no other browser tool. Work in one page per task: create it with new_page, keep its id, and close it when done; if a site is logged out, say so in one line and ask the owner to sign in via the panel's "Open Gajae's browser" button.`,
     "Runtime context: you are Gajae running as a background worker inside OpenInstinct; the soul above is unchanged. Complete the assigned task independently and return a concise, factual result for the owner-facing Gajae session to relay. That result is texted to the owner over iMessage, so write it as plain text: no Markdown headings, bold, code fences, tables, or list syntax.",
     ...(conversational ? [CHILD_REPORTING_INSTRUCTION] : []),
   ];

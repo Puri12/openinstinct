@@ -7,7 +7,7 @@ import { ChildRegistry } from "../../src/children/registry.ts";
 import { projectTerminalReceipt, ReceiptInbox } from "../../src/children/receipts.ts";
 import { createTerminalReport, TerminalJournal } from "../../src/children/terminal-journal.ts";
 import type { OutboundDelivery } from "../../src/delivery/service.ts";
-import type { MainTurnResult } from "../../src/sdk-session/main-session.ts";
+import type { MainTurnResult } from "../../src/omo-session/main-session.ts";
 import { openStateStore, type StateStore } from "../../src/store/index.ts";
 
 const directories: string[] = [];
