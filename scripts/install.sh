@@ -71,10 +71,26 @@ model_catalog_valid || {
   printf '%s\n' "installed AI package has no valid model catalog; existing daemon was left untouched" >&2
   exit 1
 }
+# Wait (up to ~5 s) for every process matching a pattern to exit. bootout and
+# pkill return before the process is gone; replacing a bundle while its old
+# binary is still mapped is how a "stale" panel or a launchd respawn of the
+# previous copy happens.
+wait_gone() {
+  i=0
+  while pgrep -f "$1" >/dev/null 2>&1 && [ "$i" -lt 50 ]; do
+    sleep 0.1; i=$((i + 1))
+  done
+}
+
 # Stop the agent before touching its executable: overwriting a running, TCC-trusted
 # binary in place makes launchd kill the next spawn with OS_REASON_CODESIGNING.
 if launchctl print "gui/$uid/co.openinstinct.daemon" >/dev/null 2>&1; then
+  daemon_pid=$(launchctl print "gui/$uid/co.openinstinct.daemon" 2>/dev/null | sed -n 's/^[[:space:]]*pid = //p' | head -1)
   launchctl bootout "gui/$uid/co.openinstinct.daemon" 2>/dev/null || true
+  i=0
+  while [ -n "$daemon_pid" ] && kill -0 "$daemon_pid" 2>/dev/null && [ "$i" -lt 50 ]; do
+    sleep 0.1; i=$((i + 1))
+  done
 fi
 if [ -d "$library" ]; then
   mv "$library" "$library_previous"
@@ -122,8 +138,11 @@ if [ -d "$repo_root/panel/.build/OpenInstinctPanel.app" ] || command -v swift >/
   panel_app="$home_dir/Applications/OpenInstinctPanel.app"
   panel_plist="$home_dir/Library/LaunchAgents/co.openinstinct.panel.plist"
   mkdir -p "$home_dir/Applications"
+  # bootout first so launchd's KeepAlive cannot respawn the old bundle in the
+  # window between pkill and the new copy landing; then wait for exit.
   launchctl bootout "gui/$uid/co.openinstinct.panel" 2>/dev/null || true
   pkill -f "OpenInstinctPanel.app/Contents/MacOS/OpenInstinctPanel" 2>/dev/null || true
+  wait_gone "OpenInstinctPanel.app/Contents/MacOS/OpenInstinctPanel"
   rm -rf "$panel_app"
   cp -R "$repo_root/panel/.build/OpenInstinctPanel.app" "$panel_app"
   cat > "$panel_plist" <<PLIST
