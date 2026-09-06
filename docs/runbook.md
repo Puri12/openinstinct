@@ -132,7 +132,7 @@ the supported installation path.
    for acceptance. Open **Chat…** to use the core chat surface even when iMessage
    is detached.
 
-**Uninstall:** From the menu-bar panel choose **Settings… → Uninstall Gajae…**.
+**Uninstall:** From the menu-bar panel choose **Settings… → Uninstall OmO…**.
 For the developer fallback, remove the launch agent, installed executable, and
 runtime copy with:
 
@@ -196,19 +196,19 @@ monitor children, with monitor priority retained; `maxLive` must be at least
 | Background task tool latency alert threshold | `toolLatencyGuardMs` | 50 ms | 5–1000 ms |
 
 Every `children.*` limit is restart-scoped. The panel writes milliseconds for
-`*Ms` keys and restarts Gajae after saving; direct config edits need a daemon
+`*Ms` keys and restarts OmO after saving; direct config edits need a daemon
 restart as well.
 
-## Gajae's own Chrome profile
+## OmO's own Chrome profile
 
 The browser tool never touches the owner's personal Chrome. Every browser
 call goes through the `browser` MCP server (`chrome-devtools-mcp`), attached to a
 daemon-owned Chrome running on `~/.openinstinct/chrome-profile` with
 `--remote-debugging-port=9223`. Chrome 136+ only allows a debugging port on a
 non-default data dir, so the profile is dedicated and persistent, and the pin
-lives in the MCP declaration rather than in a prompt. Press "Open Gajae's
+lives in the MCP declaration rather than in a prompt. Press "Open OmO's
 browser" in the panel (or `browser.open` on the socket) to open that profile in a
-visible window, sign into the sites Gajae should use, and close it. The logins
+visible window, sign into the sites OmO should use, and close it. The logins
 persist across runs and stay isolated from your own sessions, so token-rotating
 sites (Kakao, banks) no longer log you out.
 
@@ -225,9 +225,9 @@ under Accessibility; without the grant or the binary, presence is a silent
 no-op and sending is unaffected. Threaded replies are deliberately not
 implemented — that path is the fragile one.
 
-## Persona (the Gajae soul)
+## Persona (the OmO soul)
 
-`daemon/src/persona/GAJAE_SOUL.md` is appended to the engine's own system
+`daemon/src/persona/OMO_SOUL.md` is appended to the engine's own system
 prompt for every main and child session. It is read from disk at session
 creation, so editing it (bump the `soul-version` comment) and then pressing
 "Refresh personality" in the panel — or sending `session.reload` on the
@@ -243,7 +243,7 @@ panel's Settings → AI account tab runs the engine's OAuth login for a provider
 paste-the-code fallback when the browser callback cannot reach the Mac, or stores
 an API key in `~/.openinstinct/env`. The first successful sign-in picks a public
 default main model for that provider; the model picker lists everything the
-engine can reach. Until an account works, the daemon reports "Gajae has no AI
+engine can reach. Until an account works, the daemon reports "OmO has no AI
 account yet" and the panel offers Settings.
 
 If an omo, Codex CLI, or Claude Code sign-in is already on this Mac,
@@ -282,7 +282,7 @@ On first boot the daemon seeds a `heartbeat` cron monitor (default every 10
 minutes; `heartbeatMinutes` in `config.json`, `0` to never seed). Its child
 looks only for what is new since the last check-in — timed tasks in today's
 notes, due items in `tasks/`, monitors whose last run failed, unread messages
-on services signed into Gajae's Chrome — and texts one or two sentences only
+on services signed into OmO's Chrome — and texts one or two sentences only
 when there is something; otherwise it stays silent (`[[no-owner-message]]`).
 Toggle or delete it from the panel; a deleted heartbeat is not re-seeded.
 Changing the interval takes effect on the next boot.
@@ -313,7 +313,7 @@ Background components submit internal events and triage reports to the shared
 internal Chat/MainSession. That path is the only owner-facing author and
 communication authority; background workers never send iMessage directly.
 A monitor firing never texts the owner directly. Its child's terminal report is
-handed to the persistent main session as a triage turn: on failure Gajae
+handed to the persistent main session as a triage turn: on failure OmO
 diagnoses it, may repair the monitor itself with `monitor_author` (update or
 disable), records what it changed in memory, and then writes one plain-text line
 to the owner — or stays silent for a transient, self-healed blip. Raw error

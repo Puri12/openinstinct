@@ -27,8 +27,8 @@
 </p>
 
 Use the Chat window, or text from your phone after connecting the optional iMessage
-lane. Gajae reads, browses with its own Chrome, remembers, runs long work in the
-background, and keeps scheduled watches. The character is **Gajae**, an always-on daemon built on the [omo](https://github.com/code-yeongyu/oh-my-openagent) engine — the same engine behind the `omo` coding agent, running here as a resident assistant instead of a terminal session.
+lane. OmO reads, browses with its own Chrome, remembers, runs long work in the
+background, and keeps scheduled watches. The character is **OmO**, an always-on daemon built on the [omo](https://github.com/code-yeongyu/oh-my-openagent) engine — the same engine behind the `omo` coding agent, running here as a resident assistant instead of a terminal session.
 
 ## Setup
 
@@ -51,7 +51,7 @@ into a shell, download the `.tar.gz` from
 <table>
 <tr>
 <td width="50%"><img src="docs/assets/setup-2-own-account.png" alt="Optional iMessage setup refusing to run because Messages is signed in as the owner"></td>
-<td width="50%"><img src="docs/assets/setup-6-text-gajae.png" alt="Setup checklist with every optional iMessage step green"></td>
+<td width="50%"><img src="docs/assets/setup-6-text-omo.png" alt="Setup checklist with every optional iMessage step green"></td>
 </tr>
 <tr>
 <td align="center"><sub>The optional iMessage lane refuses to run on <em>your</em> Apple ID and says which account it saw.</sub></td>
@@ -153,7 +153,7 @@ bun scripts/docs-screenshots.ts  # re-renders docs/assets/*.png against a mock d
 | `daemon/src/children/` | background children (in-process engine sessions with the same soul and browser guard; `runners/omo-external.ts` is an explicit CLI adapter) |
 | `daemon/src/monitors/` | monitor store, cron scheduler, triggers, propagation/triage |
 | `daemon/src/memory/` | vendored gajae-way memory (`vendor/`) + adapters + tools |
-| `daemon/src/persona/` | `GAJAE_SOUL.md` (character) and `RUNTIME.md` (where it is) |
+| `daemon/src/persona/` | `OMO_SOUL.md` (character) and `RUNTIME.md` (where it is) |
 | `daemon/src/browser/` | daemon-owned Chrome on port 9223 plus the `chrome-devtools-mcp` browser MCP server pinned to it |
 | `daemon/src/control/` | NDJSON Unix-socket control protocol for the panel |
 | `daemon/src/settings/` | owner-editable settings, in-process account/model management on the omo engine |

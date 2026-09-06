@@ -5,7 +5,7 @@
   <a href="https://github.com/Yeachan-Heo/openinstinct/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Yeachan-Heo/openinstinct?style=flat-square"></a>
 </p>
 
-내 Mac에 상주하면서 메뉴바 Chat 창으로 대화하는 개인 에이전트. iMessage는 선택 사항이며, 폰 문자도 쓰고 싶을 때 연결합니다. 가재는 읽고, 브라우저를 돌리고, 기억하고, 백그라운드 작업과 정기 감시를 실행하며, iMessage 레인이 연결되면 문자로도 답합니다. 캐릭터는 **가재(Gajae)** — [omo](https://github.com/code-yeongyu/oh-my-openagent) 엔진(`omo` 코딩 에이전트와 같은 엔진) 위에서 터미널 세션 대신 항상 켜져 있는 데몬으로 돕습니다.
+내 Mac에 상주하면서 메뉴바 Chat 창으로 대화하는 개인 에이전트. iMessage는 선택 사항이며, 폰 문자도 쓰고 싶을 때 연결합니다. 오모냥은 읽고, 브라우저를 돌리고, 기억하고, 백그라운드 작업과 정기 감시를 실행하며, iMessage 레인이 연결되면 문자로도 답합니다. 캐릭터는 **오모냥(OmO)** — [omo](https://github.com/code-yeongyu/oh-my-openagent) 엔진(`omo` 코딩 에이전트와 같은 엔진) 위에서 터미널 세션 대신 항상 켜져 있는 데몬으로 돕습니다.
 
 아카이브 하나로 자기완결. bun 런타임과 omo 엔진(npm 패키지 `@code-yeongyu/senpi`)이 `node_modules` 안에 함께 들어 있어 따로 받아야 하는 바이너리가 없고, SIP는 켠 채로 둡니다.
 
@@ -27,15 +27,15 @@
 
 - **Chat 창**: 메뉴바 패널에서 여는 별도 iMessage풍 플레인 텍스트 대화창. AI 계정에 로그인하면 바로 쓸 수 있으며, Chat과 iMessage는 하나의 영구 세션과 공유 소유자 턴 ingress를 사용해 steering과 메모리를 일관되게 유지합니다.
 - **선택적 iMessage**: 나중에 폰 handle을 연결하면 소유자 턴의 답장·이미지·입력 중·읽음 표시를 Messages로 미러링합니다. 레인이 분리되어도 Chat은 계속 작동합니다.
-- **이미지**: 사진 보내면 봅니다. 가재가 스크린샷을 직접 볼 때는 그 사진이 나한테도 옵니다.
+- **이미지**: 사진 보내면 봅니다. 오모냥이 스크린샷을 직접 볼 때는 그 사진이 나한테도 옵니다.
 - **백그라운드 작업**: 느린 일(브라우징, 스크래핑, 긴 조사)은 자식 세션에서 돌고, "하는 중" 한 줄 뒤에 결과가 옵니다.
 - **모니터**: "매일 9시에 캘린더 브리핑", "이 사이트 바뀌면 알려줘", "24시간만
   DM 감시" — cron, 파일 감시, webhook으로 채팅에서 만들고 메뉴바에서 끄거나
   지웁니다. **Run now**/`monitors.run`으로 예약과 무관하게 즉시 한 번 실행할 수도
-  있습니다. 실패하면 가재가 먼저 진단하고 고칩니다.
+  있습니다. 실패하면 오모냥이 먼저 진단하고 고칩니다.
 - **메모리**: 모든 턴이 gajae-way 구조(daily → people/projects/decisions)의 git 저장소에 기록되고, 6시간마다 정리, 매일 점검, BM25로 검색됩니다. `memory.backfillCaptures`로 예전 소유자 교환을 원래 시각에 맞춰 중복 없이 보충할 수도 있습니다.
 - **AI 계정**: 설정에서 기존 Claude, ChatGPT/Codex CLI 자격 증명을 찾아볼 수 있고, 소유자가 직접 **Adopt**를 눌러 선택한 계정만 채택합니다. 기존 구독을 과금할 수 있으므로 자동 채택하지 않습니다.
-- **전용 Chrome**: 한 번만 로그인해두는 가재 전용 프로파일. 브라우저 툴은 여기에만 고정되며 내 개인 Chrome은 절대 건드리지 않습니다.
+- **전용 Chrome**: 한 번만 로그인해두는 오모냥 전용 프로파일. 브라우저 툴은 여기에만 고정되며 내 개인 Chrome은 절대 건드리지 않습니다.
 - **일일 제안**: 하루 한 번 내가 Mac을 어떻게 쓰는지 살펴보고 먼저 자동화를 제안합니다.
 - **메뉴바 패널**: 상태를 쉬운 말로, 항상 쓸 수 있는 **Chat…** 창, 예약 작업, 일시정지/재개, 그리고 설정 창(AI 계정 — Claude/ChatGPT 등 OAuth 또는 커스텀 엔드포인트, 선택적 iMessage, 소유자, 브라우저, 제한, 성격).
 
@@ -84,7 +84,7 @@ bash scripts/drills/failure-drills.sh
 | `daemon/src/children/` | 백그라운드 자식(인프로세스 엔진 세션 또는 외부 어댑터 `omo-external.ts`) |
 | `daemon/src/monitors/` | 모니터 저장소, cron 스케줄러, 트리거, 전파/진단 |
 | `daemon/src/memory/` | gajae-way 메모리 벤더링(`vendor/`) + 어댑터 + 툴 |
-| `daemon/src/persona/` | `GAJAE_SOUL.md`(캐릭터), `RUNTIME.md`(환경) |
+| `daemon/src/persona/` | `OMO_SOUL.md`(캐릭터), `RUNTIME.md`(환경) |
 | `daemon/src/browser/` | 전용 Chrome 프로파일 강제 |
 | `daemon/src/control/` | 패널용 NDJSON 유닉스 소켓 프로토콜 |
 | `daemon/src/settings/` | 소유자 설정, omo 엔진 계정/모델 관리를 프로세스 안에서 처리 |

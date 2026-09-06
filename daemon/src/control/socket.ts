@@ -64,7 +64,7 @@ export interface ControlServerOptions {
     readonly discoverCredentials: () => Promise<JsonObject>;
     readonly adoptCredential: (id: string) => Promise<JsonObject>;
     readonly restart: () => Promise<JsonObject>;
-    /** Opens Gajae's dedicated Chrome profile visibly so the owner can sign into sites. */
+    /** Opens OmO's dedicated Chrome profile visibly so the owner can sign into sites. */
     readonly openBrowser: () => Promise<JsonObject>;
   };
   readonly chat?: {
@@ -902,14 +902,14 @@ function imessageDetail(
 ): string | undefined {
   switch (lane.reason) {
     case "no_owner_handle":
-      return "Add your phone number under Settings → iMessage to text Gajae.";
+      return "Add your phone number under Settings → iMessage to text OmO.";
     case "fda_denied":
     case "fda_probe_error":
       return snapshot.probes.fda?.reason ?? lane.detail;
     case "attach_failed":
       return lane.detail;
     case "core_lane_down":
-      return "Gajae's session is not running yet.";
+      return "OmO's session is not running yet.";
     case "starting":
       return "Connecting to Messages…";
     case "handle_changed":
@@ -940,13 +940,13 @@ function attentionPayload(
   if (imessageAttached && accessibility && accessibility.status !== "passed") {
     return {
       id: "accessibility",
-      title: "Gajae can't send messages yet",
-      detail: "macOS needs your OK for Gajae to control Messages. In System Settings → Privacy & Security → Automation, turn on Messages under openinstinctd.",
+      title: "OmO can't send messages yet",
+      detail: "macOS needs your OK for OmO to control Messages. In System Settings → Privacy & Security → Automation, turn on Messages under openinstinctd.",
       action: "open_automation",
     };
   }
   if (snapshot.state === "running" && noCredentialHint !== null) {
-    return { id: "no_model", title: "Gajae has no AI account yet", detail: noCredentialHint, action: "open_settings" };
+    return { id: "no_model", title: "OmO has no AI account yet", detail: noCredentialHint, action: "open_settings" };
   }
   if (imessageAttached) {
     const recent = store.listDeliveries().filter((d) => d.kind === "file").slice(-3);
@@ -971,14 +971,14 @@ function remediationText(snapshot: BootstrapSnapshot): string {
     case "permission_blocked":
       return "Grant Full Disk Access to openinstinctd, and allow it to control Messages under Automation.";
     case "identity_blocked":
-      return "Sign Messages on this Mac into Gajae's own Apple ID.";
+      return "Sign Messages on this Mac into OmO's own Apple ID.";
     case "degraded":
-      return `Gajae's session failed to start: ${snapshot.reason ?? "unknown error"}. Inspect ~/.openinstinct/logs.`;
+      return `OmO's session failed to start: ${snapshot.reason ?? "unknown error"}. Inspect ~/.openinstinct/logs.`;
     case "starting":
       return snapshot.reason ?? "Daemon startup checks are in progress.";
     case "running":
       if (snapshot.probes.config.status === "invalid") {
-        return `Gajae is running with default settings; ~/.openinstinct/config.json is invalid: ${snapshot.probes.config.reason ?? "unknown reason"}.`;
+        return `OmO is running with default settings; ~/.openinstinct/config.json is invalid: ${snapshot.probes.config.reason ?? "unknown reason"}.`;
       }
       return snapshot.reason ?? "Daemon is ready.";
   }

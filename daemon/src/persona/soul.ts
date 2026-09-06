@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * The Gajae soul is a versioned Markdown file appended to the inherited omo
+ * The OmO soul is a versioned Markdown file appended to the inherited omo
  * system prompt on every omo engine session creation. It is read from disk (not
  * imported) so an edit followed by `session.reload` takes effect without a
  * daemon restart; the version comment lets the panel/status show what is live.
@@ -12,7 +12,7 @@ export interface Soul {
   readonly text: string;
 }
 
-export const SOUL_PATH = join(import.meta.dir, "GAJAE_SOUL.md");
+export const SOUL_PATH = join(import.meta.dir, "OMO_SOUL.md");
 
 export function loadSoul(path: string = SOUL_PATH, vars: { readonly ownerName?: string } = {}): Soul {
   const raw = readFileSync(path, "utf8");

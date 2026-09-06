@@ -6,7 +6,7 @@ OpenInstinct는 모든 운영 상태를 `~/.openinstinct` 아래에 둡니다. �
 
 ## 선택적 iMessage 계정 (iMessage를 연결하기 전에 읽기)
 
-SIP가 켜진 macOS 26에서 유일한 발신 경로는 로그인한 macOS 사용자의 Messages 앱입니다. 따라서 선택적 iMessage 레인은 그 사용자의 Messages 계정을 씁니다. 내가 개인적으로 쓰는 Messages 계정에 절대 붙이지 마세요. 가재의 모든 답장이 내 대화창에 뜨고 내 메시지에 이어집니다. Chat만 쓰는 설치라면 이 절 전체를 건너뛰면 됩니다.
+SIP가 켜진 macOS 26에서 유일한 발신 경로는 로그인한 macOS 사용자의 Messages 앱입니다. 따라서 선택적 iMessage 레인은 그 사용자의 Messages 계정을 씁니다. 내가 개인적으로 쓰는 Messages 계정에 절대 붙이지 마세요. 오모냥의 모든 답장이 내 대화창에 뜨고 내 메시지에 이어집니다. Chat만 쓰는 설치라면 이 절 전체를 건너뛰면 됩니다.
 
 지원하는 형태는 하나입니다. 이 Mac의 Messages를 에이전트 전용으로 만든 Apple
 ID로 로그인해 둡니다(Messages → 설정 → iMessage → 로그아웃 → 로그인). iPhone에는
@@ -73,7 +73,7 @@ ID로 로그인해 둡니다(Messages → 설정 → iMessage → 로그아웃 �
 
    번들은 `panel/.build/OpenInstinctPanel.app`입니다. 같은 개인 소켓을 보고 Pause/Resume을 제공하며, UI 자동화는 인수에 사용하지 않습니다. iMessage가 분리되어도 **Chat…**에서 코어 채팅을 사용할 수 있습니다.
 
-**삭제:** 메뉴바 패널에서 **Settings… → Uninstall Gajae…**를 선택하세요. 개발자
+**삭제:** 메뉴바 패널에서 **Settings… → Uninstall OmO…**를 선택하세요. 개발자
 환경에서는 다음 명령으로 런치 에이전트, 설치 실행 파일, 런타임 복사본을 제거할 수
 있습니다:
 
@@ -131,23 +131,23 @@ live child 캡은 대화형과 모니터 자식을 모두 세며 모니터 우�
 | 백그라운드 작업 도구 latency alert threshold | `toolLatencyGuardMs` | 50ms | 5–1000ms |
 
 모든 `children.*` 제한값은 재시작 범위다. 패널은 `*Ms` 키에 밀리초를 써서 저장한 뒤
-가재를 재시작하며, 직접 config를 고친 경우에도 데몬을 재시작해야 한다.
+오모냥을 재시작하며, 직접 config를 고친 경우에도 데몬을 재시작해야 한다.
 
-## 가재 전용 Chrome 프로파일
+## 오모냥 전용 Chrome 프로파일
 
-브라우저 툴은 소유자의 개인 Chrome을 절대 건드리지 않음. 모든 브라우저 호출은 `app.browser = "chrome"`, `user_data_dir = ~/.openinstinct/chrome-profile`에 고정됨: 데몬이 CDP 포트 9223으로 띄우는 전용 영구 프로파일이며(Chrome 136+는 비기본 데이터 디렉토리에서만 허용), `chrome-devtools-mcp`가 그 CDP URL에만 붙으므로 고정은 프롬프트가 아니라 MCP 선언으로 강제됨. 패널의 "Open Gajae's browser"(소켓 `browser.open`)로 그 프로파일을 눈에 보이게 열고, 가재가 쓸 사이트에 로그인하고 창을 닫음 — 로그인이 유지되고 내 세션과 격리되어 토큰 회전 사이트(카카오, 은행)가 나를 로그아웃시키지 않음. 프롬프트는 순차 작업에 탭 하나("main")를 재사용하도록 고정.
+브라우저 툴은 소유자의 개인 Chrome을 절대 건드리지 않음. 모든 `mcp_browser_*` 호출은 데몬이 `~/.openinstinct/chrome-profile`에 CDP 포트 9223으로 띄우는 전용 영구 Chrome으로만 감(Chrome 136+는 비기본 데이터 디렉토리에서만 원격 디버깅을 허용): `chrome-devtools-mcp`가 그 CDP URL에만 붙으므로 프로파일 고정은 프롬프트가 아니라 MCP 선언으로 강제됨. 패널의 "Open OmO's browser"(소켓 `browser.open`)로 그 프로파일을 눈에 보이게 열고, 오모냥이 쓸 사이트에 로그인하고 창을 닫음 — 로그인이 유지되고 내 세션과 격리되어 토큰 회전 사이트(카카오, 은행)가 나를 로그아웃시키지 않음. 프롬프트는 순차 작업에 탭 하나("main")를 재사용하도록 고정.
 
 ## Presence (입력 중, 읽음)
 
 `~/.openinstinct/bin/oi-presence`(Swift, beeper/platform-imessage MIT 기법 차용)가 실행 중인 Messages.app을 손쉬운 사용으로 조작: `typing <handle> on|off`는 작성창 초안을, `read <handle>`은 스레드를 열고 안 읽었으면 ⌘⇧U. Messages를 ~300ms 전면에 띄워야 해서 포커스를 뺏으므로, 키보드/마우스를 `presence.idleSec`(기본 8초) 동안 안 건드렸을 때만 — 즉 Mac이 아니라 폰을 볼 때만 — 돌아감. `config.json`에 `"presence": {"enabled": false}`로 완전히 끌 수 있음. `openinstinctd`가 손쉬운 사용에 있어야 하며, 없거나 바이너리가 없으면 조용히 no-op이고 전송엔 영향 없음. 스레드 답장은 일부러 구현하지 않음 — 그 경로가 깨지기 쉬운 곳.
 
-## 페르소나 (가재 소울)
+## 페르소나 (오모냥 소울)
 
-`daemon/src/persona/GAJAE_SOUL.md`가 모든 메인/자식 세션의 엔진 시스템 프롬프트 뒤에 붙음. 세션 생성 시 디스크에서 읽으므로, 편집하고(`soul-version` 주석 올리기) 패널의 "Refresh personality" 또는 소켓 `session.reload`를 보내면 재시작 없이 같은 트랜스크립트 위에 세션이 재구성됨. 응답에 현재 `soulVersion`이 담김.
+`daemon/src/persona/OMO_SOUL.md`가 모든 메인/자식 세션의 엔진 시스템 프롬프트 뒤에 붙음. 세션 생성 시 디스크에서 읽으므로, 편집하고(`soul-version` 주석 올리기) 패널의 "Refresh personality" 또는 소켓 `session.reload`를 보내면 재시작 없이 같은 트랜스크립트 위에 세션이 재구성됨. 응답에 현재 `soulVersion`이 담김.
 
 ## omo를 처음 쓰는 사람의 첫 실행
 
-릴리스 아카이브는 사전 설정이 필요 없음. omo 엔진(npm 패키지 `@code-yeongyu/senpi`)이 `node_modules` 안에 함께 들어 있어서 따로 받을 바이너리가 없음. 설치 후 패널 Settings → AI account 탭이 엔진 OAuth 로그인을 실행하거나(브라우저 콜백이 Mac에 못 닿으면 코드 붙여넣기 폴백) API 키를 `~/.openinstinct/env`에 저장. 첫 성공 로그인이 그 프로바이더의 공개 기본 모델을 고르고, 모델 선택기는 엔진이 닿는 모델을 전부 나열. 계정이 될 때까지 데몬은 "Gajae has no AI account yet"을 보고하고 패널이 Settings를 권함.
+릴리스 아카이브는 사전 설정이 필요 없음. omo 엔진(npm 패키지 `@code-yeongyu/senpi`)이 `node_modules` 안에 함께 들어 있어서 따로 받을 바이너리가 없음. 설치 후 패널 Settings → AI account 탭이 엔진 OAuth 로그인을 실행하거나(브라우저 콜백이 Mac에 못 닿으면 코드 붙여넣기 폴백) API 키를 `~/.openinstinct/env`에 저장. 첫 성공 로그인이 그 프로바이더의 공개 기본 모델을 고르고, 모델 선택기는 엔진이 닿는 모델을 전부 나열. 계정이 될 때까지 데몬은 "OmO has no AI account yet"을 보고하고 패널이 Settings를 권함.
 
 ### 엔진 상태와 위치
 
@@ -162,7 +162,7 @@ omo 엔진이 쓰는 것은 전부 데몬 소유의 `~/.openinstinct/omo` 아래
 
 ## 체크인 (heartbeat)
 
-첫 부팅에 `heartbeat` cron 모니터를 시드(기본 10분, `config.json`의 `heartbeatMinutes`로 조정, `0`이면 시드 안 함). 자식이 지난 체크인 이후 새로 생긴 것만 — 오늘 노트의 시간 있는 할 일, `tasks/` 마감, 마지막 실행이 실패한 모니터, 가재 Chrome에 로그인된 서비스의 안 읽은 메시지 — 살펴보고, 알릴 게 있을 때만 한두 문장을 보냄. 없으면 조용함(`[[no-owner-message]]`). 패널에서 끄거나 지울 수 있고, 지우면 다시 시드하지 않음. 간격을 바꾸면 다음 부팅에 반영.
+첫 부팅에 `heartbeat` cron 모니터를 시드(기본 10분, `config.json`의 `heartbeatMinutes`로 조정, `0`이면 시드 안 함). 자식이 지난 체크인 이후 새로 생긴 것만 — 오늘 노트의 시간 있는 할 일, `tasks/` 마감, 마지막 실행이 실패한 모니터, OmO Chrome에 로그인된 서비스의 안 읽은 메시지 — 살펴보고, 알릴 게 있을 때만 한두 문장을 보냄. 없으면 조용함(`[[no-owner-message]]`). 패널에서 끄거나 지울 수 있고, 지우면 다시 시드하지 않음. 간격을 바꾸면 다음 부팅에 반영.
 
 이것은 주기적인 사전 알림 모니터이며 턴마다 보내는 입력 중 표시 heartbeat가 아닙니다. 입력 중 표시는 턴 단위 presence이며 정기 상태 메시지를 보내지 않습니다.
 
@@ -172,7 +172,7 @@ omo 엔진이 쓰는 것은 전부 데몬 소유의 `~/.openinstinct/omo` 아래
 
 ## 모니터 결과와 삭제
 
-모니터 발화는 소유자에게 직접 문자하지 않음. 자식의 터미널 리포트가 영구 메인 세션에 진단 턴으로 넘어감: 실패하면 가재가 진단하고, `monitor_author`로 직접 고치거나 끄고, 바꾼 내용을 메모리에 남긴 뒤 소유자에게 플레인 한 줄 — 일시적이고 스스로 해결된 잡음이면 침묵. 원시 에러 코드와 페이로드는 소유자에게 절대 가지 않음.
+모니터 발화는 소유자에게 직접 문자하지 않음. 자식의 터미널 리포트가 영구 메인 세션에 진단 턴으로 넘어감: 실패하면 오모냥이 진단하고, `monitor_author`로 직접 고치거나 끄고, 바꾼 내용을 메모리에 남긴 뒤 소유자에게 플레인 한 줄 — 일시적이고 스스로 해결된 잡음이면 침묵. 원시 에러 코드와 페이로드는 소유자에게 절대 가지 않음.
 백그라운드 구성 요소는 공유 내부 Chat/MainSession에 내부 이벤트와 triage 리포트만
 제출합니다. 이 경로만 소유자에게 보이는 작성자·통신 권한자이며 background worker는
 iMessage를 직접 보내지 않습니다.

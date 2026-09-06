@@ -35,13 +35,13 @@
   <rect class="inner" x="320" y="90" width="150" height="120"/>
   <text class="innerText" x="395" y="135" text-anchor="middle" font-weight="600">Messages.app</text>
   <text class="innerText" x="395" y="155" text-anchor="middle">signed in as</text>
-  <text class="innerText" x="395" y="172" text-anchor="middle">Gajae's own Apple ID</text>
+  <text class="innerText" x="395" y="172" text-anchor="middle">OmO's own Apple ID</text>
 
   <!-- daemon -->
   <path class="edge" d="M 470 150 L 540 150"/>
   <rect class="inner" x="540" y="90" width="170" height="120"/>
   <text class="innerText" x="625" y="120" text-anchor="middle" font-weight="600">openinstinctd</text>
-  <text class="innerText" x="625" y="140" text-anchor="middle">Gajae, one long session</text>
+  <text class="innerText" x="625" y="140" text-anchor="middle">OmO, one long session</text>
   <text class="innerText" x="625" y="160" text-anchor="middle">memory · browser · files</text>
   <text class="innerText" x="625" y="180" text-anchor="middle">scheduled watches</text>
 

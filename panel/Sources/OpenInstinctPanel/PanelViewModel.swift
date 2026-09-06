@@ -99,7 +99,7 @@ public final class PanelViewModel: ObservableObject {
         do {
             let frame = try await transport.request(.browserOpen(id: requestID()))
             switch frame {
-            case .response(.browserOpen): notice = "Gajae's browser opened. Sign into the sites you want it to use, then just close the window."
+            case .response(.browserOpen): notice = "OmO's browser opened. Sign into the sites you want it to use, then just close the window."
             case .error(let error): notice = error.message
             default: throw PanelModelError.unexpectedFrame
             }
@@ -138,7 +138,7 @@ public final class PanelViewModel: ObservableObject {
                 throw PanelModelError.unexpectedFrame
             }
         } catch {
-            notice = "Fast mode could not be changed. Gajae will keep using normal speed."
+            notice = "Fast mode could not be changed. OmO will keep using normal speed."
             await refreshStatus()
         }
     }
@@ -157,7 +157,7 @@ public final class PanelViewModel: ObservableObject {
         guard !recoveryInProgress else { return }
         recoveryInProgress = true
         defer { recoveryInProgress = false }
-        notice = resetConversation ? "Starting a fresh conversation safely…" : "Restarting Gajae…"
+        notice = resetConversation ? "Starting a fresh conversation safely…" : "Restarting OmO…"
 
         do {
             var resetCompleted = !resetConversation
@@ -186,11 +186,11 @@ public final class PanelViewModel: ObservableObject {
             }
             notice = resetConversation
                 ? "Fresh conversation started. Your memory and settings are safe."
-                : "Gajae restarted. Your conversation and settings are unchanged."
+                : "OmO restarted. Your conversation and settings are unchanged."
         } catch {
             notice = resetConversation
-                ? "Gajae could not finish the fresh start. Your memory and settings are safe; try again in a moment."
-                : "Gajae could not restart automatically. Try Force Restart & Reset again in a moment."
+                ? "OmO could not finish the fresh start. Your memory and settings are safe; try again in a moment."
+                : "OmO could not restart automatically. Try Force Restart & Reset again in a moment."
         }
     }
 
@@ -402,14 +402,14 @@ public final class PanelViewModel: ObservableObject {
         // Only a transport failure means "not running". A frame we cannot decode
         // means the daemon is newer than this panel: keep the last good state.
         if error is PanelModelError || error is DecodingError || error is ControlCodecError {
-            connectionError = "Gajae is running but this panel is out of date. Reinstall to update it."
+            connectionError = "OmO is running but this panel is out of date. Reinstall to update it."
             if status == nil { connectionState = .absent }
             return
         }
         connectionState = .absent
         status = nil
         monitors = []
-        connectionError = "Gajae is not responding. Try Restart Gajae or Force Restart & Reset."
+        connectionError = "OmO is not responding. Try Restart OmO or Force Restart & Reset."
     }
 
     private struct LaunchctlResult: Sendable {

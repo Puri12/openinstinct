@@ -16,7 +16,7 @@ final class ChatWindowController: NSObject, NSWindowDelegate {
             self.chat = chat
             let view = ChatView(chat: chat)
             let w = NSWindow(contentViewController: NSHostingController(rootView: view))
-            w.title = "Chat with Gajae"
+            w.title = "Chat with OmO"
             w.setContentSize(NSSize(width: 420, height: 560))
             w.styleMask = [.titled, .closable, .miniaturizable, .resizable]
             w.isReleasedWhenClosed = false
@@ -87,7 +87,7 @@ struct ChatView: View {
     private var composer: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
-                TextField(chat.composerBlock ?? "Message Gajae", text: $draft)
+                TextField(chat.composerBlock ?? "Message OmO", text: $draft)
                     .textFieldStyle(.roundedBorder)
                     .disabled(chat.composerBlock != nil)
                     .onSubmit(send)
@@ -120,7 +120,7 @@ struct ChatView: View {
     }
 }
 
-/// iMessage-like layout: owner right and blue, Gajae left and grey, one bubble
+/// iMessage-like layout: owner right and blue, OmO left and grey, one bubble
 /// per segment, plain text only (no Markdown rendering).
 struct BubbleView: View {
     let row: ChatRow

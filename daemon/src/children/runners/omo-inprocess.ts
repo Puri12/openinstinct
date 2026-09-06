@@ -193,8 +193,8 @@ export function childSystemPrompt(conversational: boolean, _tabPrefix?: string):
   const chromeProfile = dataPaths().chromeProfile;
   return [
     loadSoul().text,
-    `Browser: use the mcp_browser_* tools (navigate_page, take_snapshot, take_screenshot, click, fill, evaluate_script, wait_for, list_pages/new_page/select_page/close_page). They are already attached to Gajae's own persistent Chrome profile at ${chromeProfile}; there is no profile to choose and no other browser tool. Work in one page per task: create it with new_page, keep its id, and close it when done; if a site is logged out, say so in one line and ask the owner to sign in via the panel's "Open Gajae's browser" button.`,
-    "Runtime context: you are Gajae running as a background worker inside OpenInstinct; the soul above is unchanged. Complete the assigned task independently and return a concise, factual result for the owner-facing Gajae session to relay. That result is texted to the owner over iMessage, so write it as plain text: no Markdown headings, bold, code fences, tables, or list syntax.",
+    `Browser: use the mcp_browser_* tools (navigate_page, take_snapshot, take_screenshot, click, fill, evaluate_script, wait_for, list_pages/new_page/select_page/close_page). They are already attached to OmO's own persistent Chrome profile at ${chromeProfile}; there is no profile to choose and no other browser tool. Work in one page per task: create it with new_page, keep its id, and close it when done; if a site is logged out, say so in one line and ask the owner to sign in via the panel's "Open OmO's browser" button.`,
+    "Runtime context: you are OmO running as a background worker inside OpenInstinct; the soul above is unchanged. Complete the assigned task independently and return a concise, factual result for the owner-facing OmO session to relay. That result is texted to the owner over iMessage, so write it as plain text: no Markdown headings, bold, code fences, tables, or list syntax.",
     ...(conversational ? [CHILD_REPORTING_INSTRUCTION] : []),
   ];
 }

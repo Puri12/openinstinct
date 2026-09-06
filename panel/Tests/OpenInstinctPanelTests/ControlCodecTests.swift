@@ -59,7 +59,7 @@ enum ControlCodecChecks {
             if payload.bootstrap.probes["fda"]?.status != "denied" {
                 failures.append("status fixture fda probe was not typed as denied")
             }
-            if payload.bootstrap.probes["messages"]?.aliases != ["gajae@example.com"] {
+            if payload.bootstrap.probes["messages"]?.aliases != ["omo@example.com"] {
                 failures.append("status fixture message aliases were not typed")
             }
             if payload.imessage.state != .detached || payload.imessage.reason != "fda_denied" {
@@ -286,9 +286,9 @@ enum ControlCodecChecks {
         }
 
         do {
-            let source = Data("{\"status\":\"passed\",\"aliases\":[\"gajae@example.com\",\"+821012345678\"]}".utf8)
+            let source = Data("{\"status\":\"passed\",\"aliases\":[\"omo@example.com\",\"+821012345678\"]}".utf8)
             let probe = try JSONDecoder().decode(ProbeInfo.self, from: source)
-            if probe.aliases != ["gajae@example.com", "+821012345678"] {
+            if probe.aliases != ["omo@example.com", "+821012345678"] {
                 failures.append("ProbeInfo aliases did not decode")
             }
             let encoded = try JSONEncoder().encode(probe)

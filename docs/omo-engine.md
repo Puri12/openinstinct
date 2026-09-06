@@ -35,7 +35,7 @@ const session = await openOmoSession({ services, cwd, sessionDir, sessionFile, m
   `followUpMode: all`, `compaction.enabled: false`, `quietStartup: true`) and a
   resource loader that loads no user extensions, skills, prompt templates,
   themes or context files; the daemon's own extension is passed inline.
-- The system prompt is the engine's default plus `persona/GAJAE_SOUL.md` and
+- The system prompt is the engine's default plus `persona/OMO_SOUL.md` and
   `persona/RUNTIME.md` through `appendSystemPrompt`.
 - `openOmoSession` opens or creates the transcript (`SessionManager.open` /
   `SessionManager.create(cwd, sessionDir)`), excludes the engine tools the

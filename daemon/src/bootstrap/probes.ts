@@ -58,7 +58,7 @@ export async function probeMessagesIdentity(
   if (filtered.length === 0) {
     return {
       status: "missing",
-      reason: "Messages on this Mac isn't signed in to iMessage. Sign it in with Gajae's own Apple ID (not yours).",
+      reason: "Messages on this Mac isn't signed in to iMessage. Sign it in with OmO's own Apple ID (not yours).",
     };
   }
 
@@ -68,7 +68,7 @@ export async function probeMessagesIdentity(
   if (ownerAlias !== undefined) {
     return {
       status: "invalid",
-      reason: `Messages on this Mac is signed in as you (${ownerAlias}). Gajae would reply inside your own conversations. Sign Messages out and back in with a separate Apple ID made for Gajae.`,
+      reason: `Messages on this Mac is signed in as you (${ownerAlias}). OmO would reply inside your own conversations. Sign Messages out and back in with a separate Apple ID made for OmO.`,
       aliases: filtered,
     };
   }
@@ -232,7 +232,7 @@ export function accessibilityProbeResult(query: () => boolean): ProbeResult {
   try {
     return query()
       ? { status: "passed" }
-      : { status: "denied", reason: "Gajae can't send texts yet: allow openinstinctd to control Messages under Automation." };
+      : { status: "denied", reason: "OmO can't send texts yet: allow openinstinctd to control Messages under Automation." };
   } catch (error) {
     return { status: "error", reason: `Automation check failed: ${error instanceof Error ? error.message : String(error)}` };
   }

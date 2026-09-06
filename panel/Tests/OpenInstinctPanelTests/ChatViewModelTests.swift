@@ -246,7 +246,7 @@ enum ChatViewModelChecks {
         let offlinePanel = PanelViewModel(transport: offlineTransport)
         await offlinePanel.refreshStatus()
         let offlineModel = ChatViewModel(panel: offlinePanel, transport: offlineTransport)
-        let offlineDetail = "Gajae isn't running on this Mac right now. Reinstall it, or wait a moment and check again."
+        let offlineDetail = "OmO isn't running on this Mac right now. Reinstall it, or wait a moment and check again."
         if offlineModel.composerBlock != offlineDetail {
             failures.append("absent daemon composer text did not match the popover offline detail")
         }

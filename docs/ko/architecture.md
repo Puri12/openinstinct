@@ -73,7 +73,7 @@ iMessage 어댑터는 계속 `imessage/reader.ts`로 `chat.db`(읽기 전용, WA
 - **워치독**: 무활동 기반(기본 300초 동안 엔진 이벤트 *없음*), 스트리밍/툴 호출/스티어가 리셋. 타임아웃 시 abort 또는 dispose + 같은 트랜스크립트 위에 재생성.
 - **컴팩션**: 엔진 자동 컴팩션 끔; 턴이 끝난 뒤 컨텍스트 ≥ 50 %면 데몬이 컴팩션.
 - **리로드**(`session.reload`): 같은 트랜스크립트 위에 dispose + 재생성 → 바뀐 시스템 프롬프트가 히스토리 손실 없이 적용.
-- **시스템 프롬프트** = 엔진 기본값 그대로(엔진의 `appendSystemPrompt`로 뒤에 붙임) → `persona/GAJAE_SOUL.md`(캐릭터, 버전 관리) → `persona/RUNTIME.md`(환경: iMessage, 플레인 텍스트, 위임 규칙, 모니터 규칙, Chrome 프로파일; `{{ownerHandle}}` 등은 config에서 치환).
+- **시스템 프롬프트** = 엔진 기본값 그대로(엔진의 `appendSystemPrompt`로 뒤에 붙임) → `persona/OMO_SOUL.md`(캐릭터, 버전 관리) → `persona/RUNTIME.md`(환경: iMessage, 플레인 텍스트, 위임 규칙, 모니터 규칙, Chrome 프로파일; `{{ownerHandle}}` 등은 config에서 치환).
 - **커스텀 툴**: 엔진의 `ToolDefinition`을 `omo-session/tool-types.ts`(typebox 스키마)로 감싸서 등록 — `delegate_background`, `send_image`, `monitor_author`, `memory_search`, `memory_capture`, `memory_audit`, `report_progress`, `child_status`/`child_nudge`.
 - **MCP 브라우저**: `browser/chrome.ts`가 데몬 소유 Chrome을 프로파일 `~/.openinstinct/chrome-profile`과 `--remote-debugging-port=9223`으로 띄우거나 재사용하고(`ensureChrome`가 먼저 `http://127.0.0.1:9223/json/version`을 프로브), `browser/enforce.ts`가 `chrome-devtools-mcp`를 그 CDP URL에 붙인 MCP 서버 `browser`로 등록합니다. 모델은 `mcp_browser_navigate_page`, `mcp_browser_take_snapshot`, `mcp_browser_take_screenshot`, `mcp_browser_click`, `mcp_browser_fill`, `mcp_browser_evaluate_script`, `mcp_browser_wait_for`, `mcp_browser_list_pages`/`new_page`/`select_page`/`close_page` 등 19개를 `includeTools`로 받습니다. 프로파일 고정은 프롬프트가 아니라 MCP 선언에 들어 있습니다.
 - **강제 규칙**: 같은 enforcer가 `task`/`subagent`/`job`/`eval`/`workflow`/`team_create`/`schedule_wakeup` 호출을 막고, 턴당 툴 예산(메인 6, 자식 40), 금지 경로(`~/.openinstinct/{children,logs,omo,state.db,env,secrets}`, 다른 에이전트의 홈, 세션 `.jsonl`), Discord 봇 토큰 규칙, 메인 세션 bash 규칙(timeout 20초 이하 또는 `run_in_background: true`)을 그대로 유지합니다.
@@ -126,7 +126,7 @@ stack, 경로와 receipt projection은 내부 근거로만 남으며 소유자�
 
 `monitors/store.ts`가 리비전 펜싱과 함께 스펙을 `state.db`에 보관. 트리거: `cron`(IANA tz, 명시적 DST 규칙), `watcher`(파일 루트), `webhook`(토큰), `script`(간격, 스크립트 루트만). 선택적 `expiresAt`이 만료 시 모니터를 끔. `memory-canonicalize`, `memory-audit`, `computer-usage-insight`는 한 번 시드되고 앞의 둘은 보호됨.
 
-발화 → `propagation.ts` 상태 머신: `admitted → batched → dispatched(자식) → authored → delivered`, 리스 펜싱, 재시작 후에도 재생 안전. "Authored"는 자식의 터미널 리포트를 **메인 세션에 진단 턴으로** 넘김: 가재가 진단하고, `monitor_author`로 모니터를 고칠 수 있고, 소유자에게 플레인 한 줄을 씀 — 스스로 해결된 잡음이면 침묵. 원시 에러 코드는 소유자에게 절대 가지 않음.
+발화 → `propagation.ts` 상태 머신: `admitted → batched → dispatched(자식) → authored → delivered`, 리스 펜싱, 재시작 후에도 재생 안전. "Authored"는 자식의 터미널 리포트를 **메인 세션에 진단 턴으로** 넘김: 오모냥이 진단하고, `monitor_author`로 모니터를 고칠 수 있고, 소유자에게 플레인 한 줄을 씀 — 스스로 해결된 잡음이면 침묵. 원시 에러 코드는 소유자에게 절대 가지 않음.
 
 수동 `monitors.run` 요청은 예약 deduplication에 삼켜지지 않도록 고유 occurrence key를 사용하며, 비활성·보호 모니터를 포함해 같은 전파 경로로 즉시 한 번 실행합니다. 모니터 일정이나 enabled 상태는 바뀌지 않습니다.
 

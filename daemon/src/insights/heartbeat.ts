@@ -7,14 +7,14 @@ const SEED_META = "insights.heartbeat.seeded";
 /**
  * Default proactive check-in. Every N minutes (config `heartbeat.minutes`,
  * default 10) a child looks at what changed since last time — unread inbound
- * across the sites signed into Gajae's Chrome, overdue tasks in memory,
+ * across the sites signed into OmO's Chrome, overdue tasks in memory,
  * failed monitors, anything time-sensitive in today's notes — and reports
  * only if there is something the owner would want to know now. The triage
  * turn stays silent otherwise, so a healthy quiet system sends nothing.
  */
 export const HEARTBEAT_INSTRUCTION = [
   "Proactive check-in. Look for anything NEW since the previous heartbeat that the owner would want to hear about right now, and nothing else.",
-  "Sources, in this order, read-only: today's daily memory notes for open tasks or reminders with a time; the memory `tasks/` axis for anything due; the monitor list for monitors that failed on their last run; unread messages on services the owner has signed Gajae's Chrome profile into (only if the profile has a live login — never attempt to log in).",
+  "Sources, in this order, read-only: today's daily memory notes for open tasks or reminders with a time; the memory `tasks/` axis for anything due; the monitor list for monitors that failed on their last run; unread messages on services the owner has signed OmO's Chrome profile into (only if the profile has a live login — never attempt to log in).",
   "Compare against the last heartbeat's report in memory so nothing is repeated.",
   "If there is something: one or two plain sentences, most urgent first. If there is nothing new, reply with exactly [[no-owner-message]] so the owner is not texted.",
   "Never modify anything, never author monitors, never send messages yourself.",

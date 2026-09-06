@@ -18,7 +18,7 @@
 
   <rect class="step" x="20" y="40" width="140" height="80"/>
   <text class="n" x="34" y="62">0</text>
-  <text class="t" x="34" y="84">Apple ID for Gajae</text>
+  <text class="t" x="34" y="84">Apple ID for OmO</text>
   <text class="s" x="34" y="104">any email, free</text>
 
   <line class="e" x1="160" y1="80" x2="190" y2="80"/>
@@ -32,7 +32,7 @@
 
   <rect class="step" x="330" y="40" width="130" height="80"/>
   <text class="n" x="344" y="62">2</text>
-  <text class="t" x="344" y="84">Gajae's iMessage</text>
+  <text class="t" x="344" y="84">OmO's iMessage</text>
   <text class="s" x="344" y="104">sign Messages in</text>
 
   <line class="e" x1="460" y1="80" x2="480" y2="80"/>

@@ -104,7 +104,7 @@ if (args[0] === "--status") {
     rl.question("you> ", async (line) => {
       const text = line.trim();
       if (text.length === 0) { rl.close(); return; }
-      process.stdout.write("gajae> ");
+      process.stdout.write("omo> ");
       await turn(text);
       ask();
     });

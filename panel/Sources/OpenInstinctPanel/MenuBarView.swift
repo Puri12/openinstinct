@@ -7,7 +7,7 @@ struct MenuBarView: View {
     @State private var showingSettings = false
     @State private var showingSetup = false
 
-    /// The checklist is the home screen until Gajae has replied to the owner
+    /// The checklist is the home screen until OmO has replied to the owner
     /// once: by then every earlier step (config, identity, permissions, AI
     /// account) has necessarily worked. Before that, a `running` daemon with
     /// no AI account would otherwise sit on "Awake and listening" and stall.
@@ -24,7 +24,7 @@ struct MenuBarView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
-                    Text("Gajae")
+                    Text("OmO")
                         .font(.headline)
                     Spacer()
                     Button {
@@ -96,7 +96,7 @@ struct UpdateRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Text(updates.installedVersion.map { "Gajae \($0)" } ?? "")
+                Text(updates.installedVersion.map { "OmO \($0)" } ?? "")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -168,9 +168,9 @@ enum Health {
         case .awake(let imessage):
             // Chat always works; iMessage is an optional extra surface.
             return imessage
-                ? "Text Gajae on iMessage or open Chat."
-                : "Open Chat to talk to Gajae. Add your number under Settings → iMessage to text it too."
-        case .offline(let why): return why ?? "Gajae isn't running on this Mac right now. Reinstall it, or wait a moment and check again."
+                ? "Text OmO on iMessage or open Chat."
+                : "Open Chat to talk to OmO. Add your number under Settings → iMessage to text it too."
+        case .offline(let why): return why ?? "OmO isn't running on this Mac right now. Reinstall it, or wait a moment and check again."
         }
     }
 
@@ -265,7 +265,7 @@ struct StatusView: View {
                             }
                             Text(status.session.fastModeEnabled == true
                                 ? "Faster replies are on"
-                                : "Current AI model for Gajae's replies")
+                                : "Current AI model for OmO's replies")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -383,7 +383,7 @@ private struct RecoveryView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
-                Button("Restart Gajae") {
+                Button("Restart OmO") {
                     Task { await model.restartDaemon() }
                 }
                 .controlSize(.small)
@@ -404,7 +404,7 @@ private struct RecoveryView: View {
         .padding(8)
         .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
         .confirmationDialog(
-            "Start fresh and restart Gajae?",
+            "Start fresh and restart OmO?",
             isPresented: $showingForceConfirmation,
             titleVisibility: .visible
         ) {
@@ -413,7 +413,7 @@ private struct RecoveryView: View {
             }
             Button("Keep current conversation", role: .cancel) {}
         } message: {
-            Text("This starts a fresh conversation and restarts Gajae. Your memory, settings, and sign-ins stay safe.")
+            Text("This starts a fresh conversation and restarts OmO. Your memory, settings, and sign-ins stay safe.")
         }
     }
 }
@@ -430,7 +430,7 @@ struct MonitorsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Scheduled tasks")
                         .font(.subheadline.weight(.semibold))
-                    Text("Things Gajae does on its own and tells you about. Ask in Chat or iMessage to add one.")
+                    Text("Things OmO does on its own and tells you about. Ask in Chat or iMessage to add one.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -509,7 +509,7 @@ struct MonitorsView: View {
             }
             Button("Keep it", role: .cancel) { pendingDelete = nil }
         } message: {
-            Text("Gajae will stop doing this. You can always ask for it again in Chat or iMessage.")
+            Text("OmO will stop doing this. You can always ask for it again in Chat or iMessage.")
         }
     }
 
@@ -556,7 +556,7 @@ struct SettingsView: View {
             Text("More")
                 .font(.headline)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Gajae only answers this number")
+                Text("OmO only answers this number")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text(model.status?.settings.allowlistHandle ?? "Not set up yet")
@@ -569,17 +569,17 @@ struct SettingsView: View {
             }
             .disabled(model.connectionState != .connected)
             Text(paused
-                 ? "Messages sent while paused are kept; Gajae will tell you how many it missed."
+                 ? "Messages sent while paused are kept; OmO will tell you how many it missed."
                  : "Use this if you want quiet for a while. Nothing is lost.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Divider()
             VStack(alignment: .leading, spacing: 4) {
-                Button("Open Gajae's browser") {
+                Button("Open OmO's browser") {
                     Task { await model.openBrowserProfile() }
                 }
                 .disabled(model.connectionState != .connected)
-                Text("Gajae has its own Chrome. Sign into sites there once (Gmail, Kakao, your bank) and it stays signed in — your own Chrome is never touched.")
+                Text("OmO has its own Chrome. Sign into sites there once (Gmail, Kakao, your bank) and it stays signed in — your own Chrome is never touched.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -594,14 +594,14 @@ struct SettingsView: View {
                     Button("Reset", role: .destructive) { Task { await model.resetSession() } }
                     Button("Keep it", role: .cancel) {}
                 } message: {
-                    Text("Gajae forgets the current chat thread. Long-term memory and scheduled tasks stay.")
+                    Text("OmO forgets the current chat thread. Long-term memory and scheduled tasks stay.")
                 }
             }
             HStack {
                 Button("Refresh personality") {
                     Task { await model.reloadPersona() }
                 }
-                .help("Apply the latest Gajae personality without losing the conversation")
+                .help("Apply the latest OmO personality without losing the conversation")
                 .disabled(model.connectionState != .connected || model.status?.session.state != .active)
                 Spacer()
                 Button("Show log files") {

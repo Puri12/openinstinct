@@ -35,7 +35,7 @@ type Scene = {
   readonly recentChildren?: { id: string; title: string; kind: string; state: string; createdAt: string; updatedAt: string; toolCalls: number; tokens: number }[];
 };
 
-const ALIAS = "gajae.lee@icloud.com";
+const ALIAS = "omo.lee@icloud.com";
 const OWNER = "+821012345678";
 const passed: Probe = { status: "passed" };
 const now = new Date();
@@ -53,10 +53,10 @@ const SCENES: Scene[] = [
     view: "setup",
     bootstrap: {
       state: "identity_blocked",
-      remediation: "Messages on this Mac is signed in as you (+82 10-1234-5678). Gajae would reply inside your own conversations. Sign Messages out and back in with a separate Apple ID made for Gajae.",
+      remediation: "Messages on this Mac is signed in as you (+82 10-1234-5678). OmO would reply inside your own conversations. Sign Messages out and back in with a separate Apple ID made for OmO.",
       probes: {
         config: passed,
-        messages: { status: "invalid", aliases: ["+821012345678"], reason: "Messages on this Mac is signed in as you (+82 10-1234-5678). Gajae would reply inside your own conversations. Sign Messages out and back in with a separate Apple ID made for Gajae." },
+        messages: { status: "invalid", aliases: ["+821012345678"], reason: "Messages on this Mac is signed in as you (+82 10-1234-5678). OmO would reply inside your own conversations. Sign Messages out and back in with a separate Apple ID made for OmO." },
       },
     },
     accounts: 0, hasReplied: false, ownerHandle: OWNER, ownerName: "Yeachan",
@@ -66,8 +66,8 @@ const SCENES: Scene[] = [
     view: "setup",
     bootstrap: {
       state: "permission_blocked",
-      remediation: "Gajae can't read your texts yet: turn on Full Disk Access for openinstinctd.",
-      probes: { config: passed, messages: { status: "passed", aliases: [ALIAS] }, fda: { status: "denied", reason: "Gajae can't read your texts yet: turn on Full Disk Access for openinstinctd." }, accessibility: { status: "denied", reason: "Gajae can't send texts yet: allow openinstinctd to control Messages under Automation." } },
+      remediation: "OmO can't read your texts yet: turn on Full Disk Access for openinstinctd.",
+      probes: { config: passed, messages: { status: "passed", aliases: [ALIAS] }, fda: { status: "denied", reason: "OmO can't read your texts yet: turn on Full Disk Access for openinstinctd." }, accessibility: { status: "denied", reason: "OmO can't send texts yet: allow openinstinctd to control Messages under Automation." } },
     },
     accounts: 0, hasReplied: false, ownerHandle: OWNER, ownerName: "Yeachan",
   },
@@ -78,7 +78,7 @@ const SCENES: Scene[] = [
     accounts: 0, hasReplied: false, ownerHandle: OWNER, ownerName: "Yeachan",
   },
   {
-    name: "setup-6-text-gajae",
+    name: "setup-6-text-omo",
     view: "setup",
     bootstrap: { state: "running", remediation: "Daemon is ready.", probes: { config: passed, messages: { status: "passed", aliases: [ALIAS] }, fda: passed, accessibility: passed } },
     accounts: 1, hasReplied: false, ownerHandle: OWNER, ownerName: "Yeachan",
@@ -125,7 +125,7 @@ function reply(scene: Scene, verb: string, id: string): unknown {
     case "settings.get": return ok({
       ownerHandle: scene.ownerHandle ?? "", ownerName: scene.ownerName ?? "", mainSessionModel: "anthropic/claude-sonnet-4-5",
       mainTurnWatchdogSec: 300, childMaxConcurrent: 4, childConversationalTimeoutSec: 1800, childDaemonTimeoutSec: 2700,
-      env: [{ key: "ANTHROPIC_API_KEY", set: scene.accounts > 0 }], soulVersion: "1", soulText: "You are Gajae.", configPath: "/Users/you/.openinstinct/config.json",
+      env: [{ key: "ANTHROPIC_API_KEY", set: scene.accounts > 0 }], soulVersion: "1", soulText: "You are OmO.", configPath: "/Users/you/.openinstinct/config.json",
     });
     case "accounts.list": return ok({ accounts: scene.accounts > 0 ? [{ id: "anthropic:you", provider: "anthropic", kind: "oauth", identity: "you@example.com", health: "ok" }] : [] });
     case "models.list": return ok({ models: [{ id: "anthropic/claude-sonnet-4-5", provider: "anthropic", canonical: "claude-sonnet-4-5" }] });

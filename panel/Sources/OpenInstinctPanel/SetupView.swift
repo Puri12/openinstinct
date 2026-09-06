@@ -18,7 +18,7 @@ struct SetupView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Setup checklist")
                         .font(.headline)
-                    Text("Finish these steps to get Gajae ready.")
+                    Text("Finish these steps to get OmO ready.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -40,7 +40,7 @@ struct SetupView: View {
                     textStep(status: status)
                 }
             } else {
-                Text("Waiting for Gajae to report its setup status.")
+                Text("Waiting for OmO to report its setup status.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -70,7 +70,7 @@ struct SetupView: View {
             if probe?.status != "passed" {
                 VStack(alignment: .leading, spacing: 6) {
                     TextField("Your phone number (with country code, e.g. +82…)", text: $settings.ownerHandle)
-                    TextField("What Gajae should call you", text: $settings.ownerName)
+                    TextField("What OmO should call you", text: $settings.ownerName)
                     HStack {
                         Button("Save") {
                             Task {
@@ -97,7 +97,7 @@ struct SetupView: View {
     private func messagesStep(probe: ProbeInfo?) -> some View {
         SetupStepRow(
             state: state(for: probe),
-            title: "Gajae's own iMessage account",
+            title: "OmO's own iMessage account",
             detail: messagesDetail(probe: probe)
         ) {
             if let probe, probe.status != "passed" {
@@ -107,8 +107,8 @@ struct SetupView: View {
                     }
                     .controlSize(.small)
                     Text(probe.status == "invalid"
-                        ? "In Messages: Settings (⌘,) → iMessage → Sign Out, then sign in with the Apple ID you made for Gajae. Your iPhone keeps your own account."
-                        : "In Messages: Settings (⌘,) → iMessage → sign in with the Apple ID you made for Gajae.")
+                        ? "In Messages: Settings (⌘,) → iMessage → Sign Out, then sign in with the Apple ID you made for OmO. Your iPhone keeps your own account."
+                        : "In Messages: Settings (⌘,) → iMessage → sign in with the Apple ID you made for OmO.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -148,8 +148,8 @@ struct SetupView: View {
     private func accessibilityStep(probe: ProbeInfo?) -> some View {
         SetupStepRow(
             state: state(for: probe),
-            title: "Let Gajae control Messages",
-            detail: probeDetail(probe: probe, passed: "Gajae can control Messages.")
+            title: "Let OmO control Messages",
+            detail: probeDetail(probe: probe, passed: "OmO can control Messages.")
         ) {
             if let probe, probe.status != "passed" {
                 VStack(alignment: .leading, spacing: 4) {
@@ -174,9 +174,9 @@ struct SetupView: View {
         if !settings.accounts.isEmpty {
             detail = "An AI account is connected."
         } else if !adoptableRows.isEmpty {
-            detail = "Found a sign-in you already have. Gajae can use it, or sign in separately."
+            detail = "Found a sign-in you already have. OmO can use it, or sign in separately."
         } else {
-            detail = "Sign in to an AI account so Gajae can think."
+            detail = "Sign in to an AI account so OmO can think."
         }
 
         return SetupStepRow(
@@ -220,14 +220,14 @@ struct SetupView: View {
 
     @ViewBuilder
     private func textStep(status: StatusResponsePayload) -> some View {
-        let alias = status.bootstrap.probes["messages"]?.aliases?.first ?? "Gajae's iMessage address"
+        let alias = status.bootstrap.probes["messages"]?.aliases?.first ?? "OmO's iMessage address"
         let ownerHandle = status.settings.allowlistHandle ?? "your phone number"
         SetupStepRow(
             state: status.session.hasReplied ? .done : .pending,
-            title: "Text Gajae",
+            title: "Text OmO",
             detail: status.session.hasReplied
-                ? "Gajae has replied to you. You're all set."
-                : "Save \(alias) in your iPhone contacts as Gajae, then text it from \(ownerHandle)."
+                ? "OmO has replied to you. You're all set."
+                : "Save \(alias) in your iPhone contacts as OmO, then text it from \(ownerHandle)."
         ) {
             EmptyView()
         }
@@ -250,7 +250,7 @@ struct SetupView: View {
         guard let probe else { return "Enter your phone number and name." }
         if probe.status == "passed" {
             let handle = model.status?.settings.allowlistHandle
-            return handle.map { "Gajae answers \($0) only. Change it under Settings… → You." } ?? "Gajae knows who to text."
+            return handle.map { "OmO answers \($0) only. Change it under Settings… → You." } ?? "OmO knows who to text."
         }
         return probe.reason ?? "Enter your phone number and name."
     }

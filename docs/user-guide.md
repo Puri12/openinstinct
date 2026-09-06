@@ -1,22 +1,22 @@
 # OpenInstinct — user guide
 
-You can start talking to Gajae in the Chat window as soon as you sign in to an
+You can start talking to OmO in the Chat window as soon as you sign in to an
 AI account. iMessage is optional: connect it later when you want to text from your
 phone. This guide is for the person installing and using it, not for developers.
 Everything technical is in the [runbook](runbook.md).
 
 ## Optional: prepare iMessage (5 minutes, once)
 
-Skip this section for a Chat-only install. If you want phone texting, Gajae uses
+Skip this section for a Chat-only install. If you want phone texting, OmO uses
 this Mac's Messages account only through the optional iMessage lane. If that
 account is your own, every reply it sends lands in your own conversations. Use a
 dedicated Apple ID:
 
-1. Create a new Apple ID for Gajae (any email; it needs a phone for the
-   verification code, but that phone is not Gajae's number).
+1. Create a new Apple ID for OmO (any email; it needs a phone for the
+   verification code, but that phone is not OmO's number).
 2. On the Mac: Messages → Settings → iMessage → sign out → sign in with the new
    Apple ID.
-3. Add the new Apple ID's email to your iPhone contacts as "Gajae" so you have
+3. Add the new Apple ID's email to your iPhone contacts as "OmO" so you have
    something to text.
 
 The panel checks this only when you choose the optional iMessage branch. It shows
@@ -57,8 +57,8 @@ The Chat window is a separate window with iMessage-like bubbles and plain text:
    Automation, or Accessibility.
 
 The composer is blocked only when the daemon cannot be reached, no AI credential
-is available, or Gajae is paused. A detached iMessage lane never blocks Chat.
-Gajae's replies, segments, and images appear in the window; the panel composer is
+is available, or OmO is paused. A detached iMessage lane never blocks Chat.
+OmO's replies, segments, and images appear in the window; the panel composer is
 text-only.
 
 Chat and the optional iMessage lane feed one shared session and owner-turn ingress;
@@ -74,13 +74,13 @@ To add phone texting after Chat is working:
    attaches the iMessage lane when it can. Grant Automation so it can send through
    Messages; grant Accessibility if you want typing and read-receipt presence.
 3. Watch the iMessage status in that tab. Connecting or disconnecting does not
-   restart Gajae, and Chat remains available while the lane is detached.
+   restart OmO, and Chat remains available while the lane is detached.
 4. To stop phone texting, press **Disconnect**. Changing the number retires the
    old number's pending deliveries before the new lane can attach.
 
 ## Using it
 
-Type in the Chat window, or text Gajae from your phone once the optional iMessage
+Type in the Chat window, or text OmO from your phone once the optional iMessage
 lane is connected. Some things it's good at:
 
 - "내일 일정 뭐 있어" / "이 링크 요약해줘" / "이 사진 뭐야" (send a photo)
@@ -121,7 +121,7 @@ Click the icon:
   time. Switch off with the toggle; delete a switched-off one with the trash
   icon. The two lock icons are built-in memory upkeep and can't be removed.
   Time-boxed ones show "until …" and then "Ended …".
-- **Quick actions…** — pause/resume, open Gajae's browser, refresh personality.
+- **Quick actions…** — pause/resume, open OmO's browser, refresh personality.
 - **Settings…** — full settings window (below), including the optional iMessage
   connection.
 - **Version line** — the installed release at the bottom. The panel checks
@@ -140,34 +140,34 @@ until it's fixed. A detached optional lane is not a Chat error.
 
 - **AI account** — sign in with a subscription (dropdown, popular ones first),
   paste an API key, or connect a custom endpoint (base URL + key + model). Pick
-  which model Gajae thinks with.
+  which model OmO thinks with.
   Existing Claude or ChatGPT/Codex CLI sign-ins can be listed with **Discover**;
-  choose **Adopt** explicitly to use one. Gajae never adopts a subscription on its
+  choose **Adopt** explicitly to use one. OmO never adopts a subscription on its
   own because that could start billing it.
 - **You** — your name.
 - **iMessage** — optionally connect or disconnect your phone number, see the lane
   and permission status, and keep using Chat without it.
-- **Browser** — "Open Gajae's browser": a Chrome window on Gajae's own profile.
+- **Browser** — "Open OmO's browser": a Chrome window on OmO's own profile.
   Sign into Gmail, Kakao, your bank, whatever you want it to use, then close it.
   Your own Chrome is never touched, and those sites won't log *you* out.
 - **Limits** — how long it waits for a silent reply; how many background tasks
   at once; how long finished tasks stay warm, when idle tasks are forgotten,
   how often progress is bundled, and the per-task update rate.
-- **Personality** — the text that makes Gajae Gajae. Edit and apply; the
+- **Personality** — the text that makes OmO OmO. Edit and apply; the
   conversation continues with the new personality.
 
 ## Pausing
 
 Quick actions → **Pause**. Texts you send while paused are kept, not answered;
-when you resume, Gajae tells you how many it missed.
+when you resume, OmO tells you how many it missed.
 
 ## When it's not working
 
 | You see | Do |
 |---|---|
 | "Needs a permission" | If iMessage is attached, follow the permission detail under **Settings… → iMessage**. Chat itself does not need that permission. |
-| "Messages is signed in as you" | Only the optional iMessage lane is blocked; sign out of Messages and sign in with Gajae's dedicated Apple ID before pressing **Connect**. |
-| "Gajae has no AI account yet" | Settings → AI account. |
+| "Messages is signed in as you" | Only the optional iMessage lane is blocked; sign out of Messages and sign in with OmO's dedicated Apple ID before pressing **Connect**. |
+| "OmO has no AI account yet" | Settings → AI account. |
 | "iMessage is detached" | Read the reason under Settings → iMessage. You can keep using Chat while you fix it or leave it disconnected. |
 | Replies stop mid-task | Nothing to do — long work has a 5-minute silence limit and it will tell you if it gave up. |
 | Pictures arrive as captions only | When using iMessage, Messages must be open (hidden is fine, quit is not) and Automation must allow `openinstinctd` to control Messages. |
@@ -177,7 +177,7 @@ when you resume, Gajae tells you how many it missed.
 
 ## Uninstall
 
-In the menu-bar panel, choose **Settings… → Uninstall Gajae…**. If the panel is
+In the menu-bar panel, choose **Settings… → Uninstall OmO…**. If the panel is
 not available, use this fallback:
 
 `bash ~/.openinstinct/src/scripts/uninstall.sh` (or delete `~/.openinstinct`,

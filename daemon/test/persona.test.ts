@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import { loadSoul } from "../src/persona/soul.ts";
 
-describe("gajae soul", () => {
+describe("omo soul", () => {
   test("ships versioned, non-empty, and strips the version comment", () => {
     const soul = loadSoul();
     expect(soul.version).toMatch(/^\d+$/);
@@ -18,8 +18,8 @@ describe("gajae soul", () => {
   test("reads the version from the file so an edit is reflected on reload", () => {
     const dir = mkdtempSync(join(tmpdir(), "openinstinct-soul-"));
     const path = join(dir, "SOUL.md");
-    writeFileSync(path, "<!-- soul-version: 7 -->\nYou are Gajae v7.");
-    expect(loadSoul(path)).toEqual({ version: "7", text: "You are Gajae v7." });
+    writeFileSync(path, "<!-- soul-version: 7 -->\nYou are OmO v7.");
+    expect(loadSoul(path)).toEqual({ version: "7", text: "You are OmO v7." });
   });
 });
 

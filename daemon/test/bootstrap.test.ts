@@ -171,15 +171,15 @@ describe("Messages identity probe", () => {
       await expect(probeMessagesIdentity(configPath, () => ["+1 (555) 000-0001"])).resolves.toEqual({
         status: "invalid",
         aliases: ["+1 (555) 000-0001"],
-        reason: "Messages on this Mac is signed in as you (+1 (555) 000-0001). Gajae would reply inside your own conversations. Sign Messages out and back in with a separate Apple ID made for Gajae.",
+        reason: "Messages on this Mac is signed in as you (+1 (555) 000-0001). OmO would reply inside your own conversations. Sign Messages out and back in with a separate Apple ID made for OmO.",
       });
-      await expect(probeMessagesIdentity(configPath, () => ["gajae@example.com"])).resolves.toEqual({
+      await expect(probeMessagesIdentity(configPath, () => ["omo@example.com"])).resolves.toEqual({
         status: "passed",
-        aliases: ["gajae@example.com"],
+        aliases: ["omo@example.com"],
       });
       await expect(probeMessagesIdentity(configPath, () => [])).resolves.toEqual({
         status: "missing",
-        reason: "Messages on this Mac isn't signed in to iMessage. Sign it in with Gajae's own Apple ID (not yours).",
+        reason: "Messages on this Mac isn't signed in to iMessage. Sign it in with OmO's own Apple ID (not yours).",
       });
       await expect(probeMessagesIdentity(configPath, () => undefined)).resolves.toEqual({
         status: "unknown",

@@ -150,7 +150,7 @@ periodic status message.
 - **Reload** (`session.reload`): dispose + recreate over the same transcript so
   a changed system prompt takes effect without losing history.
 - **System prompt** = the engine's own defaults, untouched, with the persona
-  appended through the engine's `appendSystemPrompt`: `persona/GAJAE_SOUL.md` (the
+  appended through the engine's `appendSystemPrompt`: `persona/OMO_SOUL.md` (the
   character, versioned) → `persona/RUNTIME.md` (where it is: iMessage, plain
   text, delegation rules, monitor rules, Chrome profile; `{{ownerHandle}}` etc.
   substituted from config).
@@ -265,7 +265,7 @@ monitor at its end. `memory-canonicalize`, `memory-audit`, and
 Firing → `propagation.ts` state machine: `admitted → batched → dispatched
 (child) → authored → delivered`, lease-fenced, replay-safe across restarts.
 "Authored" hands the child's terminal report to the **main session as a triage
-turn**: Gajae diagnoses, may repair the monitor with `monitor_author`, and
+turn**: OmO diagnoses, may repair the monitor with `monitor_author`, and
 writes the owner one plain line — or stays silent for a self-healed blip. Raw
 error codes never reach the owner.
 

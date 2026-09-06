@@ -70,5 +70,5 @@ say "Installing into ~/.openinstinct…"
 sh "$payload/scripts/bootstrap-from-payload.sh" "$payload"
 
 say ""
-say "Installed. Gajae is in your menu bar (the speech-bubble icon)."
+say "Installed. OmO is in your menu bar (the speech-bubble icon)."
 say "Click it to finish setup — it walks you through the rest."

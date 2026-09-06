@@ -110,7 +110,7 @@ describe("control socket", () => {
           imessage: {
             state: "detached",
             reason: "core_lane_down",
-            detail: "Gajae's session is not running yet.",
+            detail: "OmO's session is not running yet.",
             handle: "+821012345678",
           },
           attention: null,
@@ -227,7 +227,7 @@ describe("control socket", () => {
           state: "running",
           probes: {
             config: { status: "passed" },
-            messages: { status: "passed", aliases: ["gajae@example.com"] },
+            messages: { status: "passed", aliases: ["omo@example.com"] },
             credentials: { status: "passed" },
           },
         }),
@@ -258,7 +258,7 @@ describe("control socket", () => {
             remediation: "Daemon is ready.",
             probes: {
               config: { status: "passed" },
-              messages: { status: "passed", aliases: ["gajae@example.com"] },
+              messages: { status: "passed", aliases: ["omo@example.com"] },
               credentials: { status: "passed" },
             },
           },

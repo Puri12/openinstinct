@@ -1102,7 +1102,7 @@ export interface OmoMainSessionFactoryOptions {
     readonly imessage: "attached" | "detached";
   };
   readonly ownerName?: string;
-  /** Absolute path of Gajae's persistent Chrome user-data dir. */
+  /** Absolute path of OmO's persistent Chrome user-data dir. */
   readonly chromeProfile: string;
   readonly delegateBackground: DelegateBackground;
   readonly sendImage: SendImage;

@@ -75,7 +75,7 @@ public final class ChatViewModel: ObservableObject {
         return nil
     }
 
-    private static let offlineDetail = "Gajae isn't running on this Mac right now. Reinstall it, or wait a moment and check again."
+    private static let offlineDetail = "OmO isn't running on this Mac right now. Reinstall it, or wait a moment and check again."
 
     private let panel: PanelViewModel
     private let transport: any ControlTransport

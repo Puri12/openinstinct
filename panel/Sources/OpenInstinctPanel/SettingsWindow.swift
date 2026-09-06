@@ -12,7 +12,7 @@ final class SettingsWindowController {
         if window == nil {
             let view = SettingsRootView(model: model, initialTab: tab)
             let w = NSWindow(contentViewController: NSHostingController(rootView: view))
-            w.title = "Gajae Settings"
+            w.title = "OmO Settings"
             w.setContentSize(NSSize(width: 560, height: 480))
             w.styleMask = [.titled, .closable, .miniaturizable]
             w.isReleasedWhenClosed = false
@@ -106,7 +106,7 @@ final class SettingsModel: ObservableObject {
             if case .response(.modelsList(_, let r)) = try await m { models = r.models }
             if case .response(.accountsProviders(_, let r)) = try await p { providers = r.providers }
         } catch {
-            message = "Gajae isn't running, so settings can't load yet."
+            message = "OmO isn't running, so settings can't load yet."
         }
     }
 
@@ -117,7 +117,7 @@ final class SettingsModel: ObservableObject {
                 accounts = r.accounts
             }
         } catch {
-            message = "Gajae isn't running, so settings can't load yet."
+            message = "OmO isn't running, so settings can't load yet."
         }
     }
 
@@ -142,7 +142,7 @@ final class SettingsModel: ObservableObject {
             switch frame {
             case .response(.accountsAdopt(_, let r)):
                 message = r.restarting
-                    ? "Using your existing sign-in. Gajae is restarting to apply it (a few seconds)."
+                    ? "Using your existing sign-in. OmO is restarting to apply it (a few seconds)."
                     : "Using your existing sign-in."
                 await loadAccounts()
             case .error(let e): message = e.message
@@ -157,7 +157,7 @@ final class SettingsModel: ObservableObject {
             let frame = try await req(.settingsSet(id: id(), payload: SettingsSetPayload(patch: patch)))
             switch frame {
             case .response(.settingsSet(_, let r)):
-                message = r.restarting ? "Saved. Gajae is restarting to apply it (a few seconds)." : "Saved."
+                message = r.restarting ? "Saved. OmO is restarting to apply it (a few seconds)." : "Saved."
                 if !r.restarting { await load() }
             case .error(let e): message = e.message
             default: message = "Unexpected reply."
@@ -198,7 +198,7 @@ final class SettingsModel: ObservableObject {
         do {
             let frame = try await req(.providersCustom(id: id(), payload: ProvidersCustomPayload(id: customId, baseUrl: customBaseUrl, api: customApi, apiKey: customKey, model: customModel)))
             switch frame {
-            case .response(.providersCustom(_, let r)): message = "Saved. Gajae now uses \(r.modelId)."; customKey = ""; await load()
+            case .response(.providersCustom(_, let r)): message = "Saved. OmO now uses \(r.modelId)."; customKey = ""; await load()
             case .error(let e): message = e.message
             default: message = "Unexpected reply."
             }
@@ -276,7 +276,7 @@ private struct AccountTab: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Gajae needs an AI account to think with. Pick one way — a subscription you already pay for, or an API key.")
+            Text("OmO needs an AI account to think with. Pick one way — a subscription you already pay for, or an API key.")
                 .fixedSize(horizontal: false, vertical: true)
 
             GroupBox("Sign in with an account you already have") {
@@ -368,7 +368,7 @@ private struct AccountTab: View {
                 .padding(6)
             }
 
-            GroupBox("Which model Gajae uses") {
+            GroupBox("Which model OmO uses") {
                 VStack(alignment: .leading, spacing: 8) {
                     if s.models.isEmpty && s.busy {
                         HStack { ProgressView().controlSize(.small); Text("Loading models…").font(.caption).foregroundStyle(.secondary) }
@@ -410,8 +410,8 @@ private struct OwnerTab: View {
     @ObservedObject var s: SettingsModel
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Gajae only ever talks to one person: you.")
-            TextField("What Gajae should call you", text: $s.ownerName)
+            Text("OmO only ever talks to one person: you.")
+            TextField("What OmO should call you", text: $s.ownerName)
             Button("Save") { Task { await s.save(["ownerName": .string(s.ownerName)]) } }
         }
     }
@@ -423,7 +423,7 @@ private struct ImessageTab: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Optional. Gajae already talks to you in the Chat window; add your number to text it too.")
+            Text("Optional. OmO already talks to you in the Chat window; add your number to text it too.")
                 .fixedSize(horizontal: false, vertical: true)
 
             TextField("Your phone number (with country code, e.g. +82…)", text: $s.ownerHandle)
@@ -443,7 +443,7 @@ private struct ImessageTab: View {
                 Button("Disconnect") { saveHandle("") }
                     .disabled(s.ownerHandle.isEmpty || s.busy)
             }
-            Text("Connecting does not restart Gajae.")
+            Text("Connecting does not restart OmO.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -502,9 +502,9 @@ private struct BrowserTab: View {
     @ObservedObject var model: PanelViewModel
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Gajae has its own Chrome, separate from yours. Sign into the sites you want it to use there once and it stays signed in.")
+            Text("OmO has its own Chrome, separate from yours. Sign into the sites you want it to use there once and it stays signed in.")
                 .fixedSize(horizontal: false, vertical: true)
-            Button("Open Gajae's browser") { Task { await model.openBrowserProfile() } }
+            Button("Open OmO's browser") { Task { await model.openBrowserProfile() } }
             Text("Close the window when you're done. Your own Chrome is never touched.").font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -552,17 +552,17 @@ private struct LimitsTab: View {
                     ])
                 }
             }
-            Text("Saving these restarts Gajae.").font(.caption).foregroundStyle(.secondary)
+            Text("Saving these restarts OmO.").font(.caption).foregroundStyle(.secondary)
 
             Divider()
 
             GroupBox("Remove") {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Stop Gajae and remove it from this Mac. Your memory folder is kept.")
+                    Text("Stop OmO and remove it from this Mac. Your memory folder is kept.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Button("Uninstall Gajae…") {
-                        uninstallGajae()
+                    Button("Uninstall OmO…") {
+                        uninstallOmO()
                     }
                 }
                 .padding(6)
@@ -572,10 +572,10 @@ private struct LimitsTab: View {
 }
 
 @MainActor
-private func uninstallGajae() {
+private func uninstallOmO() {
     let confirmation = NSAlert()
-    confirmation.messageText = "Uninstall Gajae?"
-    confirmation.informativeText = "This stops Gajae and removes it from this Mac. Your memory folder at ~/.openinstinct/memory is kept."
+    confirmation.messageText = "Uninstall OmO?"
+    confirmation.informativeText = "This stops OmO and removes it from this Mac. Your memory folder at ~/.openinstinct/memory is kept."
     confirmation.alertStyle = .warning
     confirmation.addButton(withTitle: "Uninstall")
     confirmation.addButton(withTitle: "Cancel")
@@ -608,7 +608,7 @@ private func uninstallGajae() {
 @MainActor
 private func showUninstallFailure(_ message: String) {
     let alert = NSAlert()
-    alert.messageText = "Couldn’t uninstall Gajae"
+    alert.messageText = "Couldn’t uninstall OmO"
     alert.informativeText = message
     alert.alertStyle = .warning
     alert.addButton(withTitle: "OK")
@@ -619,7 +619,7 @@ private struct PersonalityTab: View {
     @ObservedObject var s: SettingsModel
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("This is who Gajae is. Edit freely; it takes effect right away without losing the conversation.")
+            Text("This is who OmO is. Edit freely; it takes effect right away without losing the conversation.")
             TextEditor(text: $s.soulText).font(.system(.body, design: .monospaced)).frame(minHeight: 260)
             HStack {
                 Text("v\(s.snapshot?.soulVersion ?? "?")").font(.caption).foregroundStyle(.secondary)

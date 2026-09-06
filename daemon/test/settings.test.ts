@@ -13,7 +13,7 @@ function make(): { service: SettingsService; paths: ReturnType<typeof dataPaths>
   const root = mkdtempSync(join(tmpdir(), "openinstinct-settings-")); dirs.push(root);
   const paths = dataPaths(join(root, "home")); mkdirSync(paths.root, { recursive: true });
   writeFileSync(paths.config, JSON.stringify({ allowlistHandle: "+821012345678", ownerName: "b" }));
-  const soul = join(root, "SOUL.md"); writeFileSync(soul, "<!-- soul-version: 3 -->\nYou are Gajae, a gremlin with opinions and a keyboard.");
+  const soul = join(root, "SOUL.md"); writeFileSync(soul, "<!-- soul-version: 3 -->\nYou are OmO, a gremlin with opinions and a keyboard.");
   return { service: new SettingsService({ paths, soulPath: soul }), paths, soul };
 }
 
@@ -87,7 +87,7 @@ describe("settings service", () => {
     expect(JSON.parse(readFileSync(paths.config, "utf8"))).toMatchObject({ ownerName: "Bellman", mainSessionModel: "anthropic/claude-sonnet-4-5", children: { maxConcurrent: 2 } });
     expect(readFileSync(paths.envFile, "utf8")).toBe("ANTHROPIC_API_KEY=k\n");
     expect(statSync(paths.envFile).mode & 0o777).toBe(0o600);
-    const r3 = await service.apply({ soulText: "You are Gajae v4, still a gremlin, still funnier than the CI logs." });
+    const r3 = await service.apply({ soulText: "You are OmO v4, still a gremlin, still funnier than the CI logs." });
     expect(r3.needsReload).toBe(true);
     expect(readFileSync(soul, "utf8")).toMatch(/soul-version: 4/);
   });
