@@ -289,6 +289,7 @@ export class MemoryClosureQueue {
     try {
       const output = await memoryGit(root, [
         "log",
+        "--all",
         "--format=%H",
         "--fixed-strings",
         "--grep",
