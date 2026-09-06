@@ -858,7 +858,7 @@ function statusPayload(
     activeChildren: store.listChildren().filter(isActiveChild).map(childSummaryPayload),
     recentChildren: store.listChildren()
       .filter((child) => !isActiveChild(child))
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .sort((a, b) => (b.lastActivityAt ?? b.updatedAt).localeCompare(a.lastActivityAt ?? a.updatedAt))
       .slice(0, 10)
       .map(childSummaryPayload),
     attention: attentionPayload(store, snapshot, context),
