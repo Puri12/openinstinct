@@ -17,6 +17,11 @@
 </p>
 
 <p align="center">
+  <a href="https://discord.gg/wSyUQYfhAw"><img alt="Discord" src="https://img.shields.io/badge/Discord-join-5865F2?style=flat-square&logo=discord&logoColor=white"></a>
+  <a href="https://github.com/Yeachan-Heo/openinstinct/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Yeachan-Heo/openinstinct?style=flat-square"></a>
+</p>
+
+<p align="center">
   <img src="docs/assets/flow.svg" width="960" alt="Chat window and optional iPhone iMessage lane feed openinstinctd and one shared AI session">
 </p>
 

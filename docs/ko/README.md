@@ -1,5 +1,10 @@
 # OpenInstinct (한국어)
 
+<p>
+  <a href="https://discord.gg/wSyUQYfhAw"><img alt="Discord" src="https://img.shields.io/badge/Discord-참여-5865F2?style=flat-square&logo=discord&logoColor=white"></a>
+  <a href="https://github.com/Yeachan-Heo/openinstinct/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Yeachan-Heo/openinstinct?style=flat-square"></a>
+</p>
+
 내 Mac에 상주하면서 메뉴바 Chat 창으로 대화하는 개인 에이전트. iMessage는 선택 사항이며, 폰 문자도 쓰고 싶을 때 연결합니다. 가재는 읽고, 브라우저를 돌리고, 기억하고, 백그라운드 작업과 정기 감시를 실행하며, iMessage 레인이 연결되면 문자로도 답합니다. 캐릭터는 [gajae-code](https://github.com/Yeachan-Heo/gajae-code)의 **가재(Gajae)** — 터미널 세션 대신 항상 켜져 있는 데몬으로 돕니다.
 
 아카이브 하나로 자기완결(bun 런타임과 `gjc` 포함), SIP는 켠 채로.
