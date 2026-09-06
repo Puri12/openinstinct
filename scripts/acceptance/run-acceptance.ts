@@ -277,8 +277,12 @@ async function scenarioConversationalChild(): Promise<ScenarioResult> {
 
   const minimumRowid = readConversationChild(childId)?.cursor ?? 0;
   const config = await readRuntimeConfig(paths.config);
+  if (!config.allowlistHandle) {
+    return skip("no iMessage handle is configured; AC-11 needs one (Settings → iMessage)");
+  }
+  const allowlistHandle = config.allowlistHandle;
   const inbound = await waitFor(
-    () => findInboundMessage(token, config.allowlistHandle, minimumRowid),
+    () => findInboundMessage(token, allowlistHandle, minimumRowid),
     options.waitSeconds * 1_000,
     1_000,
   );
