@@ -50,15 +50,18 @@ public final class UpdateChecker: ObservableObject {
                     return trimmed.isEmpty ? nil : trimmed
                 },
                 latestTag: {
-                    var request = URLRequest(url: URL(string: "https://api.github.com/repos/\(repo)/releases/latest")!)
-                    request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+                    // github.com/<repo>/releases/latest 302s to /releases/tag/<tag>.
+                    // That redirect is not rate-limited, unlike api.github.com
+                    // (60 anonymous requests per hour per IP, shared behind NAT).
+                    var request = URLRequest(url: URL(string: "https://github.com/\(repo)/releases/latest")!)
+                    request.httpMethod = "HEAD"
                     request.setValue("OpenInstinctPanel", forHTTPHeaderField: "User-Agent")
                     request.timeoutInterval = 15
-                    let (data, response) = try await URLSession.shared.data(for: request)
+                    let (_, response) = try await URLSession.shared.data(for: request)
                     guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
                         throw UpdateError.http((response as? HTTPURLResponse)?.statusCode ?? -1)
                     }
-                    return try UpdateChecker.parseLatestTag(data)
+                    return try UpdateChecker.parseLatestTag(fromResolvedURL: http.url)
                 },
                 launchUpdate: { tag in
                     let script = stateHome.appendingPathComponent("src/scripts/update.sh").path
@@ -89,7 +92,7 @@ public final class UpdateChecker: ObservableObject {
         public var errorDescription: String? {
             switch self {
             case .http(let code): return "GitHub answered \(code)"
-            case .malformedRelease: return "GitHub's release listing was not understood"
+            case .malformedRelease: return "GitHub did not point at a release"
             case .scriptMissing: return "The installed copy has no update script; reinstall from the website"
             case .launchFailed(let code): return "The updater could not start (exit \(code))"
             }
@@ -153,12 +156,13 @@ public final class UpdateChecker: ObservableObject {
 
     // MARK: - Pure helpers
 
-    nonisolated static func parseLatestTag(_ data: Data) throws -> String {
-        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let tag = object["tag_name"] as? String, !tag.isEmpty else {
+    /// The URL a `releases/latest` request lands on after redirects.
+    nonisolated static func parseLatestTag(fromResolvedURL url: URL?) throws -> String {
+        guard let parts = url?.pathComponents, let i = parts.lastIndex(of: "tag"), i > 0, i + 1 < parts.count,
+              parts[i - 1] == "releases", !parts[i + 1].isEmpty else {
             throw UpdateError.malformedRelease
         }
-        return tag
+        return parts[i + 1]
     }
 
     /// `v0.3.1` > `v0.3.0`; a build with extra `-N-gSHA` (git describe on an

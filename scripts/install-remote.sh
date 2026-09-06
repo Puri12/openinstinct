@@ -35,13 +35,16 @@ if [ -n "$archive" ]; then
 else
   url=${OI_ARCHIVE_URL:-}
   if [ -z "$url" ]; then
-    api="https://api.github.com/repos/$repo/releases/$( [ "$release" = "latest" ] && echo latest || echo "tags/$release" )"
-    say "Looking up the $release release…"
-    url=$(curl -fsSL "$api" \
-      | /usr/bin/grep -o "\"browser_download_url\": *\"[^\"]*darwin-$arch\.tar\.gz\"" \
-      | head -1 | sed 's/.*"\(https[^"]*\)"/\1/') \
-      || die "could not reach the GitHub API"
-    [ -n "$url" ] || die "the $release release has no darwin-$arch archive"
+    # No GitHub API: it is anonymous-rate-limited per IP (60/h) and fails behind
+    # shared NAT. The tag comes from the redirect github.com issues for
+    # releases/latest, and asset URLs are deterministic from the tag.
+    tag=$release
+    if [ "$release" = "latest" ]; then
+      say "Looking up the latest release…"
+      tag=$(curl -fsSI -o /dev/null -w '%{redirect_url}' "https://github.com/$repo/releases/latest" | sed -n 's|.*/releases/tag/||p')
+      [ -n "$tag" ] || die "could not resolve the latest release of $repo"
+    fi
+    url="https://github.com/$repo/releases/download/$tag/openinstinct-$tag-darwin-$arch.tar.gz"
   fi
   downloaded=$(mktemp -t openinstinct).tar.gz
   say "Downloading $(basename "$url")…"

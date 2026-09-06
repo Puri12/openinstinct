@@ -24,9 +24,12 @@ enum UpdateCheckerChecks {
         }
 
         // Release JSON parsing.
-        let good = Data(#"{"tag_name":"v0.3.1","name":"x"}"#.utf8)
-        if (try? UpdateChecker.parseLatestTag(good)) != "v0.3.1" { failures.append("parseLatestTag did not read tag_name") }
-        if (try? UpdateChecker.parseLatestTag(Data("{}".utf8))) != nil { failures.append("parseLatestTag accepted a release without tag_name") }
+        let resolved = URL(string: "https://github.com/Yeachan-Heo/openinstinct/releases/tag/v0.3.1")
+        if (try? UpdateChecker.parseLatestTag(fromResolvedURL: resolved)) != "v0.3.1" { failures.append("parseLatestTag did not read the tag from the redirect") }
+        for bad in ["https://github.com/Yeachan-Heo/openinstinct/releases", "https://github.com/Yeachan-Heo/openinstinct/releases/latest", "https://github.com/login"] {
+            if (try? UpdateChecker.parseLatestTag(fromResolvedURL: URL(string: bad))) != nil { failures.append("parseLatestTag accepted \(bad)") }
+        }
+        if (try? UpdateChecker.parseLatestTag(fromResolvedURL: nil)) != nil { failures.append("parseLatestTag accepted a missing URL") }
 
         // Failure-log tail: only the last run counts, and only if it never finished.
         let finished = "== update to latest started t0\nstuff\n== update done v0.3.1\n"
