@@ -1010,6 +1010,17 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<DaemonRu
         createMemoryCaptureTool(closure!),
         createMemoryAuditTool(closure!),
       ];
+      if (options.mainSessionFactory === undefined && !drillMode) {
+        // The MCP browser server attaches to the daemon-owned Chrome when the
+        // session binds its extensions, so the browser has to be up first.
+        // Headless here; "Open Gajae's browser" relaunches it visibly for logins.
+        try {
+          const { launched, url } = await ensureChrome({ profile: paths.chromeProfile, headless: true });
+          logger.write("info", "browser", "daemon_chrome_ready", { profile: paths.chromeProfile, launched, url });
+        } catch (error) {
+          logger.write("warn", "browser", "daemon_chrome_unavailable", { message: messageOf(error) });
+        }
+      }
       const factory = options.mainSessionFactory ?? (drillMode
         ? new DrillMainSessionFactory({ customTools })
         : new OmoMainSessionFactory({
