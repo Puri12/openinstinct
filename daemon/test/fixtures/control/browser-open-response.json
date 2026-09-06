@@ -1,0 +1,9 @@
+{
+  "type": "response",
+  "id": "browser-1",
+  "ok": true,
+  "payload": {
+    "opened": true,
+    "profile": "/Users/x/.openinstinct/chrome-profile"
+  }
+}

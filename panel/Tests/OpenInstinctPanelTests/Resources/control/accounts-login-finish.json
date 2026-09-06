@@ -1,0 +1,8 @@
+{
+  "type": "request",
+  "id": "lf-1",
+  "verb": "accounts.login.finish",
+  "payload": {
+    "code": "abc123"
+  }
+}

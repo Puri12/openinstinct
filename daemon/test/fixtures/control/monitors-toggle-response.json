@@ -1,0 +1,27 @@
+{
+  "type": "response",
+  "id": "monitor-toggle-1",
+  "ok": true,
+  "payload": {
+    "monitor": {
+      "id": "daily-briefing",
+      "name": "Daily briefing",
+      "trigger": {
+        "kind": "cron",
+        "expression": "30 8 * * 1-5"
+      },
+      "instruction": "Summarize priorities.",
+      "eventTypes": [
+        "cron"
+      ],
+      "burstPolicy": "coalesce",
+      "tz": "Asia/Seoul",
+      "timeoutSec": 2700,
+      "enabled": true,
+      "revision": 4,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "protected": false
+    }
+  }
+}

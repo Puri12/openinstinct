@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="300" viewBox="0 0 960 300" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8a8f98"/>
+    </marker>
+    <style>
+      .box { fill: #1c1c1e; stroke: #3a3a3c; stroke-width: 1.5; rx: 14; }
+      .title { fill: #f5f5f7; font-size: 17px; font-weight: 600; }
+      .sub { fill: #a1a1a6; font-size: 13px; }
+      .edge { stroke: #8a8f98; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+      .edgeLabel { fill: #a1a1a6; font-size: 12px; }
+      .inner { fill: #2c2c2e; stroke: #48484a; stroke-width: 1; rx: 8; }
+      .innerText { fill: #d1d1d6; font-size: 12px; }
+      .accent { fill: #30d158; }
+    </style>
+  </defs>
+
+  <!-- iPhone -->
+  <rect class="box" x="30" y="90" width="170" height="120"/>
+  <text class="title" x="115" y="140" text-anchor="middle">Your iPhone</text>
+  <text class="sub" x="115" y="162" text-anchor="middle">Messages app</text>
+  <text class="sub" x="115" y="180" text-anchor="middle">nothing to install</text>
+
+  <!-- iMessage edge -->
+  <path class="edge" d="M 200 138 L 300 138"/>
+  <path class="edge" d="M 300 162 L 200 162"/>
+  <text class="edgeLabel" x="250" y="128" text-anchor="middle">iMessage</text>
+
+  <!-- Mac -->
+  <rect class="box" x="300" y="30" width="630" height="240"/>
+  <text class="title" x="320" y="60">Your Mac</text>
+  <text class="sub" x="440" y="60">runs 24/7 · everything stays here</text>
+
+  <!-- Messages.app -->
+  <rect class="inner" x="320" y="90" width="150" height="120"/>
+  <text class="innerText" x="395" y="135" text-anchor="middle" font-weight="600">Messages.app</text>
+  <text class="innerText" x="395" y="155" text-anchor="middle">signed in as</text>
+  <text class="innerText" x="395" y="172" text-anchor="middle">Gajae's own Apple ID</text>
+
+  <!-- daemon -->
+  <path class="edge" d="M 470 150 L 540 150"/>
+  <rect class="inner" x="540" y="90" width="170" height="120"/>
+  <text class="innerText" x="625" y="120" text-anchor="middle" font-weight="600">openinstinctd</text>
+  <text class="innerText" x="625" y="140" text-anchor="middle">Gajae, one long session</text>
+  <text class="innerText" x="625" y="160" text-anchor="middle">memory · browser · files</text>
+  <text class="innerText" x="625" y="180" text-anchor="middle">scheduled watches</text>
+
+  <!-- panel -->
+  <path class="edge" d="M 710 150 L 770 150"/>
+  <rect class="inner" x="770" y="90" width="140" height="120"/>
+  <text class="innerText" x="840" y="135" text-anchor="middle" font-weight="600">Menu bar panel</text>
+  <text class="innerText" x="840" y="155" text-anchor="middle">setup · status</text>
+  <text class="innerText" x="840" y="172" text-anchor="middle">settings</text>
+
+  <!-- model -->
+  <path class="edge" d="M 625 210 L 625 250"/>
+  <text class="innerText" x="625" y="268" text-anchor="middle">your AI account (Claude, ChatGPT, API key, or your own endpoint)</text>
+</svg>

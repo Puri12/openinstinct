@@ -1,0 +1,11 @@
+{
+  "type": "event",
+  "topic": "chat.message",
+  "payload": {
+    "seq": 7,
+    "role": "assistant",
+    "text": "I found the answer.",
+    "at": "2026-01-05T08:01:05.000Z",
+    "turnId": "panel-turn-001"
+  }
+}

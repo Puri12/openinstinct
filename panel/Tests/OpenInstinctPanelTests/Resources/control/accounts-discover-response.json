@@ -1,0 +1,29 @@
+{
+  "type": "response",
+  "id": "discover-1",
+  "ok": true,
+  "payload": {
+    "credentials": [
+      {
+        "id": "anthropic:claude-code-keychain",
+        "provider": "anthropic",
+        "label": "Claude (Anthropic)",
+        "source": "Claude Code (macOS Keychain)",
+        "kind": "oauth",
+        "redactedToken": "sk-ant-…1234",
+        "identity": "owner@example.com",
+        "expiresAt": "2027-01-01T00:00:00.000Z",
+        "adoptable": true
+      },
+      {
+        "id": "openai-codex:codex-file",
+        "provider": "openai-codex",
+        "label": "Codex (ChatGPT)",
+        "source": "Codex CLI (~/.codex/auth.json)",
+        "kind": "api_key",
+        "redactedToken": "sk-…abcd",
+        "adoptable": true
+      }
+    ]
+  }
+}

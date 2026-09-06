@@ -1,0 +1,9 @@
+{
+  "type": "request",
+  "id": "logout-1",
+  "verb": "accounts.logout",
+  "payload": {
+    "provider": "anthropic",
+    "account": "me@example.com"
+  }
+}

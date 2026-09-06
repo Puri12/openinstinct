@@ -1,0 +1,9 @@
+{
+  "type": "response",
+  "id": "login-1",
+  "ok": true,
+  "payload": {
+    "url": "https://claude.ai/oauth/authorize?x=y",
+    "manual": true
+  }
+}

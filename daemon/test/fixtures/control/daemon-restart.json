@@ -1,0 +1,6 @@
+{
+  "type": "request",
+  "id": "restart-1",
+  "verb": "daemon.restart",
+  "payload": {}
+}

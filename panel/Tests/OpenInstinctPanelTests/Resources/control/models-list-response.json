@@ -1,0 +1,14 @@
+{
+  "type": "response",
+  "id": "models-1",
+  "ok": true,
+  "payload": {
+    "models": [
+      {
+        "id": "layofflabs-anthropic/claude-sonnet-5",
+        "provider": "layofflabs-anthropic",
+        "canonical": "claude-sonnet-5"
+      }
+    ]
+  }
+}

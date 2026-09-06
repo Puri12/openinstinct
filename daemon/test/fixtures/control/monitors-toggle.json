@@ -1,0 +1,10 @@
+{
+  "type": "request",
+  "id": "monitor-toggle-1",
+  "verb": "monitors.toggle",
+  "payload": {
+    "id": "daily-briefing",
+    "enabled": true,
+    "expectedRevision": 3
+  }
+}

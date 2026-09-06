@@ -1,0 +1,11 @@
+{
+  "type": "event",
+  "topic": "chat.presence",
+  "payload": {
+    "seq": 11,
+    "source": "panel",
+    "turnId": "panel-turn-001",
+    "typing": true,
+    "at": "2026-01-05T08:01:04.000Z"
+  }
+}

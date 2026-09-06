@@ -1,0 +1,8 @@
+{
+  "type": "response",
+  "id": "run-1",
+  "ok": true,
+  "payload": {
+    "dispatched": true
+  }
+}

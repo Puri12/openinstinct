@@ -1,0 +1,6 @@
+{
+  "type": "request",
+  "id": "settings-1",
+  "verb": "settings.get",
+  "payload": {}
+}

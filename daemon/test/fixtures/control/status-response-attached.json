@@ -1,0 +1,77 @@
+{
+  "type": "response",
+  "id": "status-attached",
+  "ok": true,
+  "payload": {
+    "bootstrap": {
+      "state": "running",
+      "remediation": "Daemon is ready.",
+      "probes": {
+        "config": {
+          "status": "passed"
+        },
+        "credentials": {
+          "status": "passed"
+        },
+        "fda": {
+          "status": "passed"
+        },
+        "accessibility": {
+          "status": "passed"
+        }
+      }
+    },
+    "session": {
+      "state": "active",
+      "mainSessionId": "main-session-001",
+      "mainSessionFilePresent": true,
+      "paused": false,
+      "hasReplied": false
+    },
+    "activeChildren": [
+      {
+        "id": "task-child-001",
+        "title": "Draft reply",
+        "kind": "task_tool",
+        "state": "running",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "startedAt": "2026-01-01T00:00:01.000Z",
+        "tokens": 41200,
+        "toolCalls": 8
+      },
+      {
+        "id": "daemon-child-001",
+        "title": "Monitor: Daily briefing",
+        "kind": "daemon",
+        "state": "admitted",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "toolCalls": 0
+      }
+    ],
+    "monitors": [
+      {
+        "id": "daily-briefing",
+        "name": "Daily briefing",
+        "enabled": true,
+        "revision": 4,
+        "nextFire": "2026-01-05T08:30:00.000Z"
+      },
+      {
+        "id": "webhook-digest",
+        "name": "Webhook digest",
+        "enabled": false,
+        "revision": 2,
+        "nextFire": null
+      }
+    ],
+    "settings": {
+      "allowlistHandle": "+821012345678"
+    },
+    "imessage": {
+      "state": "attached",
+      "handle": "+821012345678"
+    },
+    "attention": null,
+    "recentChildren": []
+  }
+}

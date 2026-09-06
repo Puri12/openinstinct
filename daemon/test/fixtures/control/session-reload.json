@@ -1,0 +1,6 @@
+{
+  "type": "request",
+  "id": "reload-1",
+  "verb": "session.reload",
+  "payload": {}
+}

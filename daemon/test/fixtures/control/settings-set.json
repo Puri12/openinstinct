@@ -1,0 +1,11 @@
+{
+  "type": "request",
+  "id": "settings-2",
+  "verb": "settings.set",
+  "payload": {
+    "patch": {
+      "ownerName": "owner",
+      "mainSessionModel": "layofflabs-anthropic/claude-sonnet-5"
+    }
+  }
+}

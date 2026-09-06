@@ -1,0 +1,15 @@
+{
+  "name": "openinstinct",
+  "private": true,
+  "packageManager": "bun@1.4.0",
+  "workspaces": [
+    "daemon"
+  ],
+  "scripts": {
+    "test": "bun test daemon/test",
+    "test:daemon": "bun test daemon/test"
+  },
+  "devDependencies": {
+    "bun-types": "^1.4.0"
+  }
+}

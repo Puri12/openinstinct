@@ -1,0 +1,19 @@
+node_modules/
+.DS_Store
+
+# Xcode and Swift build noise
+DerivedData/
+.build/
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+.worktrees/
+# Runtime state when HOME is redirected into this checkout
+.openinstinct/
+~/.openinstinct/
+spikes/stage0-matrix/platform-imessage/
+.gjc/
+dist/
+presence/.build/
+spikes/rustpush-local/

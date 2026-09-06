@@ -1,0 +1,8 @@
+{
+  "type": "request",
+  "id": "login-1",
+  "verb": "accounts.login",
+  "payload": {
+    "provider": "anthropic"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "type": "request",
+  "id": "browser-1",
+  "verb": "browser.open",
+  "payload": {}
+}

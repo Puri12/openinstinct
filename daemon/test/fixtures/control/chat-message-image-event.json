@@ -1,0 +1,14 @@
+{
+  "type": "event",
+  "topic": "chat.message",
+  "payload": {
+    "seq": 10,
+    "role": "assistant",
+    "image": {
+      "path": "/Users/example/Pictures/reply.png",
+      "caption": "A reply image"
+    },
+    "at": "2026-01-05T08:01:08.000Z",
+    "turnId": "panel-turn-001"
+  }
+}

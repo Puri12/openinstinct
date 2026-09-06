@@ -1,0 +1,6 @@
+{
+  "type": "request",
+  "id": "chat-subscribe-1",
+  "verb": "chat.subscribe",
+  "payload": {}
+}

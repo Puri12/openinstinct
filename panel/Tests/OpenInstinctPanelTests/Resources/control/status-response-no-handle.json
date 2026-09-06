@@ -1,0 +1,36 @@
+{
+  "type": "response",
+  "id": "status-no-handle",
+  "ok": true,
+  "payload": {
+    "bootstrap": {
+      "state": "running",
+      "remediation": "Daemon is ready.",
+      "probes": {
+        "config": {
+          "status": "passed"
+        },
+        "credentials": {
+          "status": "passed"
+        }
+      }
+    },
+    "session": {
+      "state": "active",
+      "mainSessionId": "main-session-001",
+      "mainSessionFilePresent": true,
+      "paused": false,
+      "hasReplied": false
+    },
+    "activeChildren": [],
+    "monitors": [],
+    "settings": {},
+    "imessage": {
+      "state": "detached",
+      "reason": "no_owner_handle",
+      "detail": "Add your phone number under Settings → iMessage to text Gajae."
+    },
+    "attention": null,
+    "recentChildren": []
+  }
+}

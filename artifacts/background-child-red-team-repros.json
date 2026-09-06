@@ -1,0 +1,41 @@
+{
+  "staleGeneration": {
+    "scenario": "late tokenless agent_end/message_update after next agent_start",
+    "observed": {
+      "state": "completed",
+      "text": "second-answer"
+    },
+    "expected": {
+      "state": "completed",
+      "text": "second-answer"
+    },
+    "violated": false
+  },
+  "repeatedAgentStart": {
+    "scenario": "second agent_start does not overwrite the captured token",
+    "beforeMaintenanceEnd": "settled",
+    "observed": {
+      "state": "completed",
+      "text": "work-answer"
+    },
+    "expected": {
+      "state": "completed",
+      "text": "work-answer"
+    },
+    "violated": false
+  },
+  "admissionCallbackLeak": {
+    "scenario": "spawnDaemon onAdmitted fencing callback throws",
+    "callbackError": "dispatch_fence_lost",
+    "observedChild": {
+      "id": "7df4ae51-d4ec-44ec-b266-fa5b1017d240",
+      "state": "cancelled"
+    },
+    "activeCount": 0,
+    "queuedCount": 1,
+    "liveCount": 1,
+    "secondAdmissionError": "",
+    "secondAdmissionId": "fb7ceebf-3970-4d6c-93e8-b8d939e6c79d",
+    "violated": false
+  }
+}

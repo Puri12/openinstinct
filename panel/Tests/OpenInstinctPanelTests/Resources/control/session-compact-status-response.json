@@ -1,0 +1,9 @@
+{
+  "type": "response",
+  "id": "compact-status-1",
+  "ok": true,
+  "payload": {
+    "operationId": "00000000-0000-4000-8000-000000000001",
+    "state": "running"
+  }
+}

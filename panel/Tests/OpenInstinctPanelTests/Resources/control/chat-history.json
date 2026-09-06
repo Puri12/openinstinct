@@ -1,0 +1,8 @@
+{
+  "type": "request",
+  "id": "chat-history-1",
+  "verb": "chat.history",
+  "payload": {
+    "limit": 4
+  }
+}

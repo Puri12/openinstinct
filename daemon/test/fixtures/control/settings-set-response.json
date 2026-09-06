@@ -1,0 +1,10 @@
+{
+  "type": "response",
+  "id": "settings-2",
+  "ok": true,
+  "payload": {
+    "ok": true,
+    "restarting": false,
+    "reloaded": true
+  }
+}

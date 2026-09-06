@@ -1,0 +1,9 @@
+{
+  "type": "response",
+  "id": "reload-1",
+  "ok": true,
+  "payload": {
+    "reloaded": true,
+    "soulVersion": "1"
+  }
+}

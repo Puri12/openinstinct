@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "types": [
+      "bun-types"
+    ]
+  },
+  "include": [
+    "daemon/src/**/*.ts",
+    "daemon/test/**/*.ts",
+    "scripts/**/*.ts"
+  ]
+}

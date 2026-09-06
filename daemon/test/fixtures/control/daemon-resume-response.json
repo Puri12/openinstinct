@@ -1,0 +1,8 @@
+{
+  "type": "response",
+  "id": "resume-1",
+  "ok": true,
+  "payload": {
+    "paused": false
+  }
+}

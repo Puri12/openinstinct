@@ -1,0 +1,8 @@
+{
+  "type": "response",
+  "id": "restart-1",
+  "ok": true,
+  "payload": {
+    "restarting": true
+  }
+}

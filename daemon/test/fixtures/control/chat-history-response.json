@@ -1,0 +1,62 @@
+{
+  "type": "response",
+  "id": "chat-history-1",
+  "ok": true,
+  "payload": {
+    "messages": [
+      {
+        "role": "owner",
+        "source": "imessage",
+        "text": "Can you check the latest report?",
+        "at": "2026-01-05T08:00:00.000Z"
+      },
+      {
+        "role": "owner",
+        "source": "panel",
+        "text": "And summarize it here.",
+        "at": "2026-01-05T08:01:00.000Z"
+      },
+      {
+        "role": "assistant",
+        "text": "I found three updates.",
+        "at": "2026-01-05T08:01:05.000Z"
+      },
+      {
+        "role": "assistant",
+        "image": {
+          "path": "/Users/example/Pictures/report.png",
+          "caption": "The latest report"
+        },
+        "at": "2026-01-05T08:01:06.000Z"
+      }
+    ],
+    "seq": 42,
+    "tail": [
+      {
+        "topic": "chat.message",
+        "payload": {
+          "seq": 41,
+          "role": "assistant",
+          "text": "One more detail is still loading.",
+          "at": "2026-01-05T08:02:00.000Z",
+          "turnId": "panel-turn-002"
+        }
+      },
+      {
+        "topic": "chat.message",
+        "payload": {
+          "seq": 42,
+          "role": "assistant",
+          "text": "I am checking the attachment.",
+          "at": "2026-01-05T08:02:01.000Z",
+          "turnId": "panel-turn-002"
+        }
+      }
+    ],
+    "inFlight": {
+      "turnId": "panel-turn-002",
+      "typing": true
+    },
+    "tailTruncated": true
+  }
+}

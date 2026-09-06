@@ -1,0 +1,14 @@
+{
+  "name": "@openinstinct/daemon",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "bun test test"
+  },
+  "dependencies": {
+    "@gajae-code/coding-agent": "0.16.0",
+    "@gajae-code/utils": "0.16.0",
+    "croner": "^10.0.1"
+  }
+}

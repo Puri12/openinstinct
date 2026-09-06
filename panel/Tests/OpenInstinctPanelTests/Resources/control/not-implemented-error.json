@@ -1,0 +1,7 @@
+{
+  "type": "error",
+  "id": "monitor-toggle-1",
+  "ok": false,
+  "code": "revision_conflict",
+  "message": "monitor revision conflict: daily-briefing expected 3"
+}

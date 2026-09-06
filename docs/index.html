@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenInstinct — a personal AI agent that lives on your Mac and texts you back</title>
+<meta name="description" content="Self-hosted personal AI agent on your Mac, reached over iMessage. Nothing to install on your phone. Memory, its own browser, background work, scheduled watches.">
+<meta property="og:title" content="OpenInstinct">
+<meta property="og:description" content="A personal AI agent that lives on your Mac and talks to you over iMessage.">
+<meta property="og:image" content="assets/setup-6-text-gajae.png">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="assets/icon.png">
+<style>
+  :root {
+    --bg: #000;
+    --panel: #111113;
+    --line: #2a2a2d;
+    --fg: #f5f5f7;
+    --dim: #a1a1a6;
+    --faint: #6e6e73;
+    --accent: #30d158;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+  h1, h2, h3 { line-height: 1.15; letter-spacing: -0.02em; margin: 0; }
+
+  header { padding: 96px 0 72px; text-align: center; }
+  header img.icon { width: 88px; height: 88px; border-radius: 20px; }
+  h1 { font-size: clamp(40px, 7vw, 68px); margin: 28px 0 0; font-weight: 700; }
+  .tagline { font-size: clamp(18px, 2.4vw, 23px); color: var(--dim); margin: 20px auto 0; max-width: 640px; }
+  .sub { color: var(--faint); font-size: 15px; margin-top: 14px; }
+
+  .install {
+    display: flex; align-items: stretch; margin: 36px auto 16px; max-width: 800px;
+    border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden;
+    text-align: left;
+  }
+  .install code {
+    flex: 1; padding: 15px 18px; font-size: 13px; color: var(--fg);
+    overflow-x: auto; white-space: nowrap; scrollbar-width: none;
+  }
+  .install code::-webkit-scrollbar { display: none; }
+  .install button {
+    border: 0; border-left: 1px solid var(--line); background: transparent; color: var(--dim);
+    font: inherit; font-size: 13px; font-weight: 600; padding: 0 20px; cursor: pointer;
+    transition: color .15s ease, background .15s ease;
+  }
+  .install button:hover { color: var(--fg); background: #1b1b1e; }
+
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 26px; }
+  .btn {
+    display: inline-block; padding: 13px 24px; border-radius: 999px; text-decoration: none;
+    font-weight: 600; font-size: 15px; border: 1px solid var(--line); color: var(--fg);
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .btn:hover { border-color: #555; }
+  .btn.primary { background: var(--fg); color: #000; border-color: var(--fg); }
+  .btn.primary:hover { background: #fff; }
+
+  section { padding: 72px 0; border-top: 1px solid var(--line); }
+  .eyebrow { color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  h2 { font-size: clamp(26px, 3.6vw, 36px); margin: 14px 0 0; }
+  .lede { color: var(--dim); margin-top: 14px; max-width: 660px; }
+
+  img.diagram { width: 100%; height: auto; margin: 44px 0 0; }
+
+  .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 28px; margin-top: 44px; }
+  .shot { margin: 0; }
+  .shot img { width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--line); display: block; }
+  .shot figcaption { color: var(--faint); font-size: 13.5px; margin-top: 12px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1px; margin-top: 44px; background: var(--line); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .card { background: var(--panel); padding: 26px 24px; }
+  .card h3 { font-size: 16px; }
+  .card p { color: var(--dim); font-size: 14.5px; margin: 10px 0 0; }
+
+  .steps { counter-reset: s; list-style: none; padding: 0; margin: 40px 0 0; }
+  .steps li { counter-increment: s; position: relative; padding: 0 0 22px 44px; color: var(--dim); }
+  .steps li::before {
+    content: counter(s); position: absolute; left: 0; top: 0;
+    width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line);
+    color: var(--accent); font-size: 13px; font-weight: 700; display: grid; place-items: center;
+  }
+  .steps b { color: var(--fg); font-weight: 600; }
+
+  .note { border-left: 2px solid var(--accent); padding: 4px 0 4px 18px; color: var(--dim); margin-top: 32px; }
+  pre { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; overflow-x: auto; font-size: 13.5px; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 32px; font-size: 14.5px; }
+  th, td { text-align: left; padding: 12px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--faint); font-weight: 600; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+  td.k { color: var(--fg); white-space: nowrap; width: 34%; }
+  td { color: var(--dim); }
+
+  footer { padding: 56px 0 80px; border-top: 1px solid var(--line); color: var(--faint); font-size: 14px; text-align: center; }
+  footer a { text-decoration: none; margin: 0 10px; }
+  footer a:hover { color: var(--fg); }
+</style>
+</head>
+<body>
+
+<header class="wrap">
+  <img class="icon" src="assets/icon.png" alt="">
+  <h1>OpenInstinct</h1>
+  <p class="tagline">A personal AI agent that lives on your Mac and talks to you over iMessage.</p>
+  <p class="sub">Nothing to install on your phone. Nothing leaves your machine except the model call.</p>
+  <div class="install">
+    <code id="cmd">curl -fsSL https://raw.githubusercontent.com/Yeachan-Heo/openinstinct/main/scripts/install-remote.sh | sh</code>
+    <button id="copy" type="button" aria-label="Copy the install command">Copy</button>
+  </div>
+  <p class="sub">macOS on Apple Silicon. No certificate prompt, no Gatekeeper wall — <a href="#gatekeeper">why</a>.</p>
+  <div class="cta">
+    <a class="btn" href="https://github.com/Yeachan-Heo/openinstinct/releases/latest">Download the archive</a>
+    <a class="btn" href="https://github.com/Yeachan-Heo/openinstinct">Source on GitHub</a>
+  </div>
+</header>
+
+<section class="wrap">
+  <span class="eyebrow">How it works</span>
+  <h2>Your phone talks to your Mac. That's the whole architecture.</h2>
+  <p class="lede">
+    The phone side is the Messages app you already have — no bot to add, no app to install, works
+    from the lock screen. The Mac side is where the agent, its memory, its browser sessions, and
+    your credentials live.
+  </p>
+  <img class="diagram" src="assets/flow.svg" alt="Your iPhone sends iMessage to Messages.app on your Mac, which the openinstinctd daemon reads and replies through; the daemon holds one long agent session with memory, a browser, and scheduled watches, and calls your own AI account.">
+</section>
+
+<section class="wrap">
+  <span class="eyebrow">Setup</span>
+  <h2>One command. The menu bar does the rest, live.</h2>
+  <p class="lede">
+    The install command copies files and gets out of the way. Everything else is a checklist in the
+    menu bar that watches its own state — each step turns green on its own as you finish it, and it
+    refuses to run if something would go wrong.
+  </p>
+  <img class="diagram" src="assets/setup-flow.svg" alt="Setup steps: an Apple ID for Gajae, who you are, Gajae's iMessage account, Full Disk Access, Automation, AI account, then text it.">
+
+  <div class="shots">
+    <figure class="shot">
+      <img src="assets/setup-2-own-account.png" alt="The setup checklist showing an orange warning: Messages on this Mac is signed in as you.">
+      <figcaption>It refuses to run on <em>your</em> Apple ID, and tells you which account it saw — so it can never reply inside your own conversations.</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="assets/setup-6-text-gajae.png" alt="The setup checklist with every step green.">
+      <figcaption>No terminal, no config files. The phone number, the permissions, the AI account — all from the menu bar.</figcaption>
+    </figure>
+  </div>
+
+  <div class="note">
+    The one thing to know: Gajae uses this Mac's Messages app as its own phone, so that app gets
+    signed in with a separate, free Apple ID made for Gajae. Your iPhone and your own iMessage are
+    untouched — you just stop using Messages on this Mac yourself.
+  </div>
+</section>
+
+<section class="wrap">
+  <span class="eyebrow">What it does</span>
+  <h2>Everything you'd ask a person who sits at your Mac.</h2>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Just text it</h3>
+      <p>One long-running conversation, steered by every new message. Rapid texts fold into the turn already running; long answers arrive as separate messages. Typing indicator and read receipts when you're away from the Mac.</p>
+    </div>
+    <div class="card">
+      <h3>Send it pictures</h3>
+      <p>Send a photo and it looks at it. When it takes a screenshot itself, you get the picture back.</p>
+    </div>
+    <div class="card">
+      <h3>Its own browser</h3>
+      <p>A dedicated Chrome profile you sign into once. The browser tool is hard-pinned to it and can never open your personal Chrome or touch your cookies.</p>
+    </div>
+    <div class="card">
+      <h3>Background work</h3>
+      <p>Anything slow — research, scraping, long browsing — runs as a child session. You get "on it", then the result, without the conversation blocking.</p>
+    </div>
+    <div class="card">
+      <h3>Scheduled watches</h3>
+      <p>"Brief me at 9 every morning." "Tell me if this page changes." "Watch my DMs for 24 hours." Authored from chat, toggled from the menu bar. Failures get triaged by the agent instead of dumped on you.</p>
+    </div>
+    <div class="card">
+      <h3>It remembers</h3>
+      <p>Every turn lands in a git-backed memory repo — daily notes rolled up into people, projects, and decisions — recalled on demand instead of stuffed into a context window.</p>
+    </div>
+  </div>
+
+  <div class="shots" style="grid-template-columns: minmax(280px, 480px); justify-content: center;">
+    <figure class="shot">
+      <img src="assets/panel-status.png" alt="The menu bar panel: awake and listening, a task in progress, and two scheduled tasks.">
+      <figcaption>The menu bar in normal use: health in plain words, what it's working on, and every scheduled task with its next run.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="wrap">
+  <span class="eyebrow">Self-hosted, precisely</span>
+  <h2>What actually leaves your Mac.</h2>
+  <table>
+    <tr><th>Thing</th><th>Where it lives</th></tr>
+    <tr><td class="k">Your messages</td><td>Read from the Messages database on your Mac. Never uploaded anywhere but the model call for the turn you sent.</td></tr>
+    <tr><td class="k">Memory</td><td>A git repository in your home folder. Yours to read, grep, back up, or delete.</td></tr>
+    <tr><td class="k">Browser sessions, passwords</td><td>On disk, owner-only permissions. Secrets you text it are stored per-service and never echoed back.</td></tr>
+    <tr><td class="k">Model calls</td><td>To whichever AI account you sign into — Claude, ChatGPT, an API key, or your own endpoint.</td></tr>
+    <tr><td class="k">Telemetry</td><td>None. There is no server; there is no account with us.</td></tr>
+  </table>
+  <p class="lede" style="margin-top: 32px">
+    System Integrity Protection stays on. The only permissions it asks for are Full Disk Access, to
+    read incoming texts, and Automation, to send them. It answers exactly one phone number — yours —
+    and drops everything else.
+  </p>
+</section>
+
+<section class="wrap">
+  <span class="eyebrow">Install</span>
+  <h2>Five minutes, once.</h2>
+  <ol class="steps">
+    <li><b>Make a free Apple ID for the agent.</b> Any email. It needs a phone number for the verification code, but that phone does not become the agent's number.</li>
+    <li><b>Sign this Mac's Messages into it.</b> Messages → Settings → iMessage → sign out → sign in with the new Apple ID.</li>
+    <li><b>Run the install command.</b> Paste it into Terminal. It copies files into your home folder and opens the menu bar.</li>
+    <li><b>Follow the checklist.</b> Your phone number, two macOS permissions, and your AI account. Each step verifies itself.</li>
+    <li><b>Text it.</b> The panel shows the address to save in your contacts.</li>
+  </ol>
+  <p class="lede" style="margin-top: 28px">
+    Building from source instead:
+  </p>
+  <pre><code>git clone https://github.com/Yeachan-Heo/openinstinct &amp;&amp; cd openinstinct
+bun install
+bash scripts/install.sh</code></pre>
+  <p class="lede">
+    Full walkthrough in the <a href="https://github.com/Yeachan-Heo/openinstinct/blob/main/docs/user-guide.md">user guide</a>,
+    internals in the <a href="https://github.com/Yeachan-Heo/openinstinct/blob/main/docs/architecture.md">architecture notes</a>,
+    operations in the <a href="https://github.com/Yeachan-Heo/openinstinct/blob/main/docs/runbook.md">runbook</a>.
+  </p>
+</section>
+
+<section class="wrap" id="gatekeeper">
+  <span class="eyebrow">Why a command, not a download</span>
+  <h2>It skips a wall Apple puts in front of unsigned apps.</h2>
+  <p class="lede">
+    macOS only inspects files that carry a <code>com.apple.quarantine</code> tag, and that tag is
+    attached by the app that downloaded them — your browser. Anything fetched with
+    <code>curl</code> is untagged, so Gatekeeper never assesses it and you never see
+    "cannot be opened because the developer cannot be verified". This is the same reason Homebrew,
+    rustup, and bun install the way they do.
+  </p>
+  <p class="lede">
+    The command downloads one
+    <a href="https://github.com/Yeachan-Heo/openinstinct/releases/latest"><code>.tar.gz</code></a>,
+    checks it against a published checksum, and extracts it. Downloading that same archive in a
+    browser is equally fine: unpacking an archive and running a shell script is not a gated app
+    launch, so there is no approval screen either way and nothing needs notarizing.
+  </p>
+  <p class="lede">
+    Prefer to read before you run? The
+    <a href="https://github.com/Yeachan-Heo/openinstinct/blob/main/scripts/install-remote.sh">install script</a>
+    is short, and it refuses to continue on a checksum mismatch.
+  </p>
+</section>
+
+<section class="wrap">
+  <span class="eyebrow">Not for</span>
+  <h2>Things it deliberately doesn't do.</h2>
+  <p class="lede">
+    Group chats. Voice. Multiple owners. Remote access from outside your Mac. Turning off System
+    Integrity Protection. If you need an agent that anyone can message, this is the wrong shape —
+    it is built to serve exactly one person.
+  </p>
+</section>
+
+<footer class="wrap">
+  <a href="https://github.com/Yeachan-Heo/openinstinct">GitHub</a>
+  <a href="https://github.com/Yeachan-Heo/openinstinct/blob/main/docs/user-guide.md">User guide</a>
+  <a href="https://github.com/Yeachan-Heo/openinstinct/blob/main/docs/ko/README.md">한국어</a>
+  <a href="https://github.com/Yeachan-Heo/openinstinct/releases">Releases</a>
+  <p style="margin-top: 24px">The character is Gajae, from <a href="https://github.com/Yeachan-Heo/gajae-code">gajae-code</a>.</p>
+</footer>
+
+<script>
+  document.getElementById("copy").addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    try {
+      await navigator.clipboard.writeText(document.getElementById("cmd").textContent.trim());
+      button.textContent = "Copied";
+    } catch {
+      button.textContent = "Press ⌘C";
+    }
+    setTimeout(() => { button.textContent = "Copy"; }, 1800);
+  });
+</script>
+
+</body>
+</html>

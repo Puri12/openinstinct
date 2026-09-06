@@ -1,0 +1,19 @@
+{
+  "type": "response",
+  "id": "p-1",
+  "ok": true,
+  "payload": {
+    "providers": [
+      {
+        "id": "anthropic",
+        "label": "Claude (Anthropic)",
+        "popular": true
+      },
+      {
+        "id": "zenmux",
+        "label": "zenmux",
+        "popular": false
+      }
+    ]
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "type": "response",
+  "id": "settings-1",
+  "ok": true,
+  "payload": {
+    "ownerHandle": "+821012345678",
+    "ownerName": "owner",
+    "mainSessionModel": "layofflabs-anthropic/claude-sonnet-5",
+    "mainTurnWatchdogSec": 300,
+    "childMaxConcurrent": 4,
+    "childConversationalTimeoutSec": 1800,
+    "childDaemonTimeoutSec": 2700,
+    "childWarmTtlSec": 600,
+    "childIdleTimeoutSec": 86400,
+    "childMaxLive": 16,
+    "childInterimBatchSec": 3,
+    "childInterimRatePerMinute": 6,
+    "childInterimMaxBytes": 1024,
+    "childStatusListLimit": 20,
+    "childStatusTextBytes": 512,
+    "childToolGuardMs": 50,
+    "env": [
+      {
+        "key": "OPENAI_API_KEY",
+        "set": true
+      },
+      {
+        "key": "ANTHROPIC_API_KEY",
+        "set": false
+      }
+    ],
+    "soulVersion": "1",
+    "soulText": "You are Gajae.",
+    "configPath": "/Users/x/.openinstinct/config.json"
+  }
+}

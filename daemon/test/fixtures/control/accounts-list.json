@@ -1,0 +1,6 @@
+{
+  "type": "request",
+  "id": "accounts-1",
+  "verb": "accounts.list",
+  "payload": {}
+}

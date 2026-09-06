@@ -1,0 +1,8 @@
+{
+  "type": "request",
+  "id": "compact-1",
+  "verb": "session.compact",
+  "payload": {
+    "requestKey": "panel-retry-001"
+  }
+}

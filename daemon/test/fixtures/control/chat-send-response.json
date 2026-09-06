@@ -1,0 +1,9 @@
+{
+  "type": "response",
+  "id": "chat-send-1",
+  "ok": true,
+  "payload": {
+    "turnId": "panel-turn-001",
+    "outcome": "accepted"
+  }
+}

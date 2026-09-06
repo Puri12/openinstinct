@@ -1,0 +1,8 @@
+{
+  "type": "response",
+  "id": "c-1",
+  "ok": true,
+  "payload": {
+    "modelId": "my-gateway/gpt-5"
+  }
+}

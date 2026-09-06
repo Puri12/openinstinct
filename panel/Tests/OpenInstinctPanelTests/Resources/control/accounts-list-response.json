@@ -1,0 +1,16 @@
+{
+  "type": "response",
+  "id": "accounts-1",
+  "ok": true,
+  "payload": {
+    "accounts": [
+      {
+        "id": "anthropic:stored:6",
+        "provider": "anthropic",
+        "kind": "oauth",
+        "identity": "me@example.com",
+        "health": "unknown"
+      }
+    ]
+  }
+}

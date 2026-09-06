@@ -1,0 +1,6 @@
+{
+  "type": "request",
+  "id": "maintenance-1",
+  "verb": "maintenance.run",
+  "payload": {}
+}

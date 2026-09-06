@@ -1,0 +1,12 @@
+{
+  "type": "request",
+  "id": "c-1",
+  "verb": "providers.custom",
+  "payload": {
+    "id": "my-gateway",
+    "baseUrl": "https://gw.example.com/v1",
+    "api": "openai-responses",
+    "apiKey": "sk-x",
+    "model": "gpt-5"
+  }
+}

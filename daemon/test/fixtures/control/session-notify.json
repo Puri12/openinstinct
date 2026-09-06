@@ -1,0 +1,8 @@
+{
+  "type": "request",
+  "id": "notify-1",
+  "verb": "session.notify",
+  "payload": {
+    "text": "Heartbeat runner bug fixed; monitors re-enabled."
+  }
+}

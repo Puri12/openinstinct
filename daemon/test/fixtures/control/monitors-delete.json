@@ -1,0 +1,9 @@
+{
+  "type": "request",
+  "id": "monitor-delete-1",
+  "verb": "monitors.delete",
+  "payload": {
+    "id": "daily-briefing",
+    "expectedRevision": 4
+  }
+}

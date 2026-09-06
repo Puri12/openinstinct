@@ -1,0 +1,8 @@
+{
+  "type": "request",
+  "id": "run-1",
+  "verb": "monitors.run",
+  "payload": {
+    "id": "memory-canonicalize"
+  }
+}

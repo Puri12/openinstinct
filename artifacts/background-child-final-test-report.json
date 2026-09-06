@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "kind": "api-package-test-report",
+  "sourceHash": "sha256:98a82ef321fca0bcbcf131f67d7e30c50515fbf68ac857dbab4028b7809c95c6",
+  "mergeBase": "2eb11b2c0b5918d9ef3ff6461e7ce23886f334aa",
+  "verification": {
+    "daemonTypecheck": "passed",
+    "daemonTests": { "passed": 483, "skipped": 2, "failed": 0, "assertions": 1945 },
+    "failureDrills": { "passed": 8, "failed": 0 },
+    "panelChecks": { "passed": 8, "failed": 0 },
+    "redTeamRepros": { "violated": false }
+  },
+  "liveModelProbe": {
+    "promptHash": "43d62036a1658786cb8bd5f01e3b25c637066c08fa94d0e944aa011887848cc0",
+    "reportProgressCalls": 1,
+    "tokenMatched": true,
+    "result": "done"
+  },
+  "limitations": [
+    "The physical iMessage-attached AC-21 journey was not run; equivalent lifecycle, SIGKILL drill, replay, and actual-model evidence passed."
+  ]
+}

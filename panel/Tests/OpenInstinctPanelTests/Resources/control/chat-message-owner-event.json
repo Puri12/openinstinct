@@ -1,0 +1,12 @@
+{
+  "type": "event",
+  "topic": "chat.message",
+  "payload": {
+    "seq": 9,
+    "role": "owner",
+    "source": "imessage",
+    "text": "Thanks!",
+    "at": "2026-01-05T08:01:07.000Z",
+    "turnId": "imessage-turn-001"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "type": "response",
+  "id": "maintenance-1",
+  "ok": true,
+  "payload": {
+    "ran": true,
+    "deliveryLedgerPruned": 2,
+    "monitorEventsPruned": 3,
+    "receiptsPruned": 4,
+    "journalsPruned": 1,
+    "logRotated": false
+  }
+}

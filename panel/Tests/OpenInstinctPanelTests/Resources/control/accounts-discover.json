@@ -1,0 +1,6 @@
+{
+  "type": "request",
+  "id": "discover-1",
+  "verb": "accounts.discover",
+  "payload": {}
+}

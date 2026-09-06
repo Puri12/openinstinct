@@ -1,0 +1,6 @@
+{
+  "type": "request",
+  "id": "models-1",
+  "verb": "models.list",
+  "payload": {}
+}

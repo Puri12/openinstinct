@@ -1,0 +1,15 @@
+{
+  "name": "sdk-spike",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^7"
+  },
+  "dependencies": {
+    "@gajae-code/coding-agent": "^0.15.6"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "type": "response",
+  "id": "adopt-1",
+  "ok": true,
+  "payload": {
+    "adopted": true,
+    "provider": "anthropic",
+    "restarting": true
+  }
+}

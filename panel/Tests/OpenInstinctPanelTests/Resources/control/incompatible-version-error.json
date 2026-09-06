@@ -1,0 +1,6 @@
+{
+  "type": "error",
+  "ok": false,
+  "code": "incompatible_version",
+  "message": "control protocol version must be 1"
+}

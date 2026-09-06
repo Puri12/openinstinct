@@ -1,0 +1,8 @@
+{
+  "type": "request",
+  "id": "chat-send-1",
+  "verb": "chat.send",
+  "payload": {
+    "text": "Hello from the Chat window"
+  }
+}

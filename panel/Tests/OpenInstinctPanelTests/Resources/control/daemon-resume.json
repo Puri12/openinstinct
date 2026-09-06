@@ -1,0 +1,6 @@
+{
+  "type": "request",
+  "id": "resume-1",
+  "verb": "daemon.resume",
+  "payload": {}
+}

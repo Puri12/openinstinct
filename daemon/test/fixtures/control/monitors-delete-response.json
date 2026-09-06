@@ -1,0 +1,9 @@
+{
+  "type": "response",
+  "id": "monitor-delete-1",
+  "ok": true,
+  "payload": {
+    "id": "daily-briefing",
+    "deleted": true
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "type": "request",
+  "id": "monitors-1",
+  "verb": "monitors.list",
+  "payload": {}
+}

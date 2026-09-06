@@ -1,0 +1,105 @@
+{
+  "type": "response",
+  "id": "status-1",
+  "ok": true,
+  "payload": {
+    "bootstrap": {
+      "state": "running",
+      "remediation": "Daemon is ready.",
+      "probes": {
+        "config": {
+          "status": "passed"
+        },
+        "messages": {
+          "status": "passed",
+          "aliases": [
+            "gajae@example.com"
+          ]
+        },
+        "credentials": {
+          "status": "passed"
+        },
+        "fda": {
+          "status": "denied",
+          "reason": "chat.db cannot be opened read-only; grant Full Disk Access to the installed daemon"
+        },
+        "accessibility": {
+          "status": "passed"
+        }
+      }
+    },
+    "session": {
+      "state": "active",
+      "mainSessionId": "main-session-001",
+      "mainSessionFilePresent": true,
+      "paused": false,
+      "hasReplied": true
+    },
+    "activeChildren": [
+      {
+        "id": "task-child-001",
+        "title": "Draft reply",
+        "kind": "task_tool",
+        "origin": "owner",
+        "state": "idle",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "startedAt": "2026-01-01T00:00:01.000Z",
+        "lastActivityAt": "2026-01-01T00:00:05.000Z",
+        "tokens": 41200,
+        "toolCalls": 8,
+        "updatedAt": "2026-01-01T00:00:05.000Z"
+      },
+      {
+        "id": "daemon-child-001",
+        "title": "Monitor: Daily briefing",
+        "kind": "daemon",
+        "origin": "monitor",
+        "state": "cold",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "lastActivityAt": "2026-01-01T00:00:05.000Z",
+        "toolCalls": 0,
+        "updatedAt": "2026-01-01T00:00:05.000Z"
+      }
+    ],
+    "monitors": [
+      {
+        "id": "daily-briefing",
+        "name": "Daily briefing",
+        "enabled": true,
+        "revision": 4,
+        "nextFire": "2026-01-05T08:30:00.000Z"
+      },
+      {
+        "id": "webhook-digest",
+        "name": "Webhook digest",
+        "enabled": false,
+        "revision": 2,
+        "nextFire": null
+      }
+    ],
+    "settings": {
+      "allowlistHandle": "+821012345678"
+    },
+    "imessage": {
+      "state": "detached",
+      "reason": "fda_denied",
+      "detail": "chat.db cannot be opened read-only; grant Full Disk Access to the installed daemon",
+      "handle": "+821012345678"
+    },
+    "attention": null,
+    "recentChildren": [
+      {
+        "id": "task-child-000",
+        "title": "Summarize inbox",
+        "kind": "task_tool",
+        "origin": "owner",
+        "state": "terminated",
+        "createdAt": "2025-12-31T23:50:00.000Z",
+        "updatedAt": "2025-12-31T23:54:00.000Z",
+        "startedAt": "2025-12-31T23:50:01.000Z",
+        "tokens": 12000,
+        "toolCalls": 3
+      }
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "type": "request",
+  "id": "pause-1",
+  "verb": "daemon.pause",
+  "payload": {}
+}

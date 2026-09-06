@@ -1,0 +1,9 @@
+{
+  "type": "response",
+  "id": "reset-1",
+  "ok": true,
+  "payload": {
+    "reset": true,
+    "sessionId": "01a0-new"
+  }
+}

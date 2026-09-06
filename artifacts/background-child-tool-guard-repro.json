@@ -1,0 +1,14 @@
+{
+  "elapsedMs": 100.13787500000001,
+  "guardEvent": {
+    "event": "child_tool_latency_alert",
+    "fields": {
+      "tool": "child_status",
+      "ms": 100,
+      "exceeded": true
+    }
+  },
+  "expected": "Injected synchronous callback is outside the production status-reader contract; threshold is detection telemetry, not preemption.",
+  "outsideProductionContract": true,
+  "violated": false
+}

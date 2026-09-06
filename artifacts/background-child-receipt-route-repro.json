@@ -1,0 +1,10 @@
+{
+  "consumed": false,
+  "fallbackConsumed": true,
+  "eventStage": "failed",
+  "receiptState": "delivered",
+  "triageTurns": 1,
+  "ownerDeliveries": 1,
+  "expected": "failed correlated event falls through to action-first triage and safe owner delivery",
+  "violated": false
+}

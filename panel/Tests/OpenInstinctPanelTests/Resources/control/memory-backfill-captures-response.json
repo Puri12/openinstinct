@@ -1,0 +1,11 @@
+{
+  "type": "response",
+  "id": "bf-1",
+  "ok": true,
+  "payload": {
+    "scanned": 270,
+    "captured": 116,
+    "skippedInjected": 102,
+    "skippedAlreadyPresent": 52
+  }
+}

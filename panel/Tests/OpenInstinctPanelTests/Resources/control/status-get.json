@@ -1,0 +1,6 @@
+{
+  "type": "request",
+  "id": "status-1",
+  "verb": "status.get",
+  "payload": {}
+}

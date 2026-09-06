@@ -1,0 +1,6 @@
+{
+  "type": "request",
+  "id": "p-1",
+  "verb": "accounts.providers",
+  "payload": {}
+}

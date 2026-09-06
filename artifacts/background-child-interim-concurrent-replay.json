@@ -1,0 +1,24 @@
+{
+  "observedTurns": 1,
+  "deliveryCount": 1,
+  "batch": {
+    "id": "a0318582-a8a8-4e14-8836-a25fad4e2ec6",
+    "state": "delivered",
+    "attempt": 1,
+    "prompt": "[interim-batch a0318582-a8a8-4e14-8836-a25fad4e2ec6]\nBackground task “Research” (child-1) reports:\none update",
+    "omitted": {},
+    "mode": "turn",
+    "deliveryId": "delivery-1",
+    "outcome": "owner_text",
+    "createdAt": "2026-09-04T03:56:58.890Z",
+    "injectedAt": "2026-09-04T03:56:58.890Z",
+    "deliveredAt": "2026-09-04T03:56:59.017Z",
+    "updatedAt": "2026-09-04T03:56:59.017Z"
+  },
+  "outcomes": [
+    "fulfilled",
+    "fulfilled"
+  ],
+  "expected": "one main-session injection per batch id even when replay overlaps an in-flight flush",
+  "violated": false
+}

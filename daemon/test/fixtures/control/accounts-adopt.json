@@ -1,0 +1,8 @@
+{
+  "type": "request",
+  "id": "adopt-1",
+  "verb": "accounts.adopt",
+  "payload": {
+    "id": "anthropic:claude-code-keychain"
+  }
+}

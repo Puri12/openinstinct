@@ -1,0 +1,6 @@
+{
+  "type": "request",
+  "id": "reset-1",
+  "verb": "session.reset",
+  "payload": {}
+}
