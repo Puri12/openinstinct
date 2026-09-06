@@ -342,7 +342,7 @@ struct StatusView: View {
                             ForEach(status.recentChildren) { child in
                                 HStack(alignment: .top, spacing: 6) {
                                     Image(systemName: recentChildSymbol(child.state))
-                                        .foregroundStyle(child.state == .completed ? Color.secondary : Color.orange)
+                                        .foregroundStyle(child.state == .completed || child.state == .cold ? Color.secondary : Color.orange)
                                     VStack(alignment: .leading, spacing: 1) {
                                         Text(child.title)
                                             .lineLimit(1)
@@ -667,7 +667,7 @@ func recentChildSymbol(_ state: ChildState) -> String {
     switch state {
     case .completed: return "checkmark.circle"
     case .cancelled: return "xmark.circle"
-    case .terminated: return "moon.zzz"
+    case .terminated, .cold: return "moon.zzz"
     default: return "exclamationmark.triangle"
     }
 }
@@ -679,6 +679,7 @@ func recentChildCaption(_ child: ActiveChild) -> String {
     switch child.state {
     case .completed: verb = "finished"
     case .cancelled: verb = "cancelled"
+    case .cold: verb = "asleep since"
     default: verb = child.state.rawValue
     }
     if let iso = child.updatedAt, let end = parseISO(iso) {

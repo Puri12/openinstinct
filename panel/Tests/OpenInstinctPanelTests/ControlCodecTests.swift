@@ -71,10 +71,10 @@ enum ControlCodecChecks {
             if payload.session.mainSessionId != "main-session-001" {
                 failures.append("status fixture main session id was not typed")
             }
-            if payload.activeChildren.map(\.kind) != [.taskTool, .daemon] {
+            if payload.activeChildren.map(\.kind) != [.taskTool] || payload.recentChildren.map(\.kind) != [.daemon, .taskTool] {
                 failures.append("status fixture child kinds were not typed")
             }
-            if payload.activeChildren.map(\.state) != [.idle, .cold] || payload.recentChildren.first?.state != .terminated {
+            if payload.activeChildren.map(\.state) != [.idle] || payload.recentChildren.map(\.state) != [.cold, .terminated] {
                 failures.append("status fixture conversational child states were not typed")
             }
             if payload.activeChildren.first?.lastActivityAt != "2026-01-01T00:00:05.000Z" {

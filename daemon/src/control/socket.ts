@@ -988,9 +988,10 @@ function remediationText(snapshot: BootstrapSnapshot): string {
   }
 }
 
+/** Cold children are resumable transcripts, not work in progress; they belong in "Recent tasks". */
 function isActiveChild(child: { readonly state: string }): boolean {
   return child.state === "requested" || child.state === "admitted" || child.state === "running"
-    || child.state === "idle" || child.state === "cold";
+    || child.state === "idle";
 }
 
 function childSummaryPayload(child: {

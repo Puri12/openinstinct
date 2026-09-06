@@ -48,17 +48,6 @@
         "tokens": 41200,
         "toolCalls": 8,
         "updatedAt": "2026-01-01T00:00:05.000Z"
-      },
-      {
-        "id": "daemon-child-001",
-        "title": "Monitor: Daily briefing",
-        "kind": "daemon",
-        "origin": "monitor",
-        "state": "cold",
-        "createdAt": "2026-01-01T00:00:00.000Z",
-        "lastActivityAt": "2026-01-01T00:00:05.000Z",
-        "toolCalls": 0,
-        "updatedAt": "2026-01-01T00:00:05.000Z"
       }
     ],
     "monitors": [
@@ -88,6 +77,17 @@
     },
     "attention": null,
     "recentChildren": [
+      {
+        "id": "daemon-child-001",
+        "title": "Monitor: Daily briefing",
+        "kind": "daemon",
+        "origin": "monitor",
+        "state": "cold",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "lastActivityAt": "2026-01-01T00:00:05.000Z",
+        "toolCalls": 0,
+        "updatedAt": "2026-01-01T00:00:05.000Z"
+      },
       {
         "id": "task-child-000",
         "title": "Summarize inbox",
